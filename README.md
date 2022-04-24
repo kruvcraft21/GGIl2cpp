@@ -68,68 +68,68 @@ print(Il2cppClassesInfo('MyClass'))
 --output
 --[[
 { -- table(d14b949)
-	[1] = { -- table(9bd524e)
-		['AddressInMemory'] = '512AAFFF',
-		['AddressOffset'] = , -- some number
-		['Class'] = 'MyClass',
-		['ClassAddress'] = '',-- some number in hex
-		['NameFucntion'] = 'Method2',
-		['Offset'] = '12AAFFF',
-	},
+    [1] = { -- table(9bd524e)
+        ['AddressInMemory'] = '512AAFFF',
+        ['AddressOffset'] = , -- some number
+        ['Class'] = 'MyClass',
+        ['ClassAddress'] = '',-- some number in hex
+        ['NameFucntion'] = 'Method2',
+        ['Offset'] = '12AAFFF',
+    },
     [2] = { -- table(9bd524e)
-		['AddressInMemory'] = '51234FFF',
-		['AddressOffset'] = , -- some number
-		['Class'] = 'MyClass',
-		['ClassAddress'] = '',-- some number in hex
-		['NameFucntion'] = 'Method1',
-		['Offset'] = '1234FFF',
-	},
-} 	true
+        ['AddressInMemory'] = '51234FFF',
+        ['AddressOffset'] = , -- some number
+        ['Class'] = 'MyClass',
+        ['ClassAddress'] = '',-- some number in hex
+        ['NameFucntion'] = 'Method1',
+        ['Offset'] = '1234FFF',
+    },
+}     true
 { -- table(d136ff9)
-	[1] = { -- table(fabb3e)
-		['Fields'] = { -- table(3f432bd)
-			[ 1] = { -- table(19d60b2)
-				['Class'] = 'MyClass',
-				['ClassAddress'] = '',-- some number in hex
-				['IsStatic'] = true,
-				['NameField'] = 'instance',
-				['Offset'] = '0',
-			},
-			[ 2] = { -- table(f249803)
-				['Class'] = 'MyClass',
-				['ClassAddress'] = '',-- some number in hex
-				['IsStatic'] = false,
-				['NameField'] = 'field1',
-				['Offset'] = '4',
-			},
-			[ 3] = { -- table(e37d380)
-				['Class'] = 'MyClass',
-				['ClassAddress'] = '',-- some number in hex
-				['IsStatic'] = false,
-				['NameField'] = 'field2',
-				['Offset'] = 'C',
-			},
-		},
-		['Methods'] = { -- table(fc2cd9f)
-			[ 1] = { -- table(8922eec)
-				['AddressInMemory'] = '51234FFF',
-		        ['AddressOffset'] = , -- some number
-		        ['Class'] = 'MyClass',
-		        ['ClassAddress'] = '',-- some number in hex
-		        ['NameFucntion'] = 'Method1',
-		        ['Offset'] = '1234FFF',
-			},
-			[ 2] = { -- table(71212b5)
-				['AddressInMemory'] = '512AAFFF',
-		        ['AddressOffset'] = , -- some number
-		        ['Class'] = 'MyClass',
-		        ['ClassAddress'] = '',-- some number in hex
-		        ['NameFucntion'] = 'Method2',
-		        ['Offset'] = '12AAFFF',
-			},
-		},
-	},
-} 	true
+    [1] = { -- table(fabb3e)
+        ['Fields'] = { -- table(3f432bd)
+            [ 1] = { -- table(19d60b2)
+                ['Class'] = 'MyClass',
+                ['ClassAddress'] = '',-- some number in hex
+                ['IsStatic'] = true,
+                ['NameField'] = 'instance',
+                ['Offset'] = '0',
+            },
+            [ 2] = { -- table(f249803)
+                ['Class'] = 'MyClass',
+                ['ClassAddress'] = '',-- some number in hex
+                ['IsStatic'] = false,
+                ['NameField'] = 'field1',
+                ['Offset'] = '4',
+            },
+            [ 3] = { -- table(e37d380)
+                ['Class'] = 'MyClass',
+                ['ClassAddress'] = '',-- some number in hex
+                ['IsStatic'] = false,
+                ['NameField'] = 'field2',
+                ['Offset'] = 'C',
+            },
+        },
+        ['Methods'] = { -- table(fc2cd9f)
+            [ 1] = { -- table(8922eec)
+                ['AddressInMemory'] = '51234FFF',
+                ['AddressOffset'] = , -- some number
+                ['Class'] = 'MyClass',
+                ['ClassAddress'] = '',-- some number in hex
+                ['NameFucntion'] = 'Method1',
+                ['Offset'] = '1234FFF',
+            },
+            [ 2] = { -- table(71212b5)
+                ['AddressInMemory'] = '512AAFFF',
+                ['AddressOffset'] = , -- some number
+                ['Class'] = 'MyClass',
+                ['ClassAddress'] = '',-- some number in hex
+                ['NameFucntion'] = 'Method2',
+                ['Offset'] = '12AAFFF',
+            },
+        },
+    },
+}     true
 
 ]]
 ```
