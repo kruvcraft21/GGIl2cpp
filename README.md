@@ -63,7 +63,6 @@ As an example, I want to get information about the class and about the methods "
 require('Il2cppApi')
 
 print(il2cppfunc('Method2', 'Method1'))
-print(Il2cppClassesInfo('MyClass'))
 
 --output
 --[[
@@ -85,6 +84,12 @@ print(Il2cppClassesInfo('MyClass'))
         ['Offset'] = '1234FFF',
     },
 }     true
+]]
+
+print(Il2cppClassesInfo('MyClass'))
+
+--output
+--[[
 { -- table(d136ff9)
     [1] = { -- table(fabb3e)
         ['Fields'] = { -- table(3f432bd)
@@ -130,6 +135,23 @@ print(Il2cppClassesInfo('MyClass'))
         },
     },
 }     true
+]]
+
+local Method1 = il2cppfunc('Method1')
+for k,v in pairs(Method1) do
+    if v.Class == 'MyClass' then 
+        addresspath(tonumber(v.AddressInMemory,16),"\x20\x00\x80\x52","\xc0\x03\x5f\xd6")
+    end
+end
+
+--output
+--[[
+this code changes will change the method "Method1", so that it constantly returns 1
+
+arm64:
+
+51234FFF 20008052 mov w0,#0x1
+51235003 C0035FD6 ret
 
 ]]
 ```
