@@ -1,14 +1,12 @@
 local platform, libil, data, IsSplit = gg.getTargetInfo().x64, gg.getRangesList('libil2cpp.so'), gg.getRangesList('global-metadata.dat'), false
 
 Il2CppApi = {
-    Offset1 = platform and 0x10 or 0x8,
-    Offset2 = platform and '!/lib/arm64-v8a/libil2cpp.so' or '!/lib/armeabi-v7a/libil2cpp.so',
-    Offset3 = platform and 0x8 or 0x4,
-    Offset4 = platform and 0x18 or 0xC,
-    Offset5 = platform and 0xC or 0x8,
+    NameLibIl2cpp = platform and '!/lib/arm64-v8a/libil2cpp.so' or '!/lib/armeabi-v7a/libil2cpp.so',
     NumMethods = platform and 0x11C or 0xA4,
     MethodsLink = platform and 0x98 or 0x4C,
     MethodsStep = platform and 0x8 or 0x4,
+    MethodNameOffset = platform and 0x10 or 0x8,
+    MethodClassOffset = platform and 0x18 or 0xC,
     NameFucntionOffset = platform and 0x10 or 0x8,
     ClassNameOffset = platform and 0x10 or 0x8, 
     NumFields = platform and 0x120 or 0xA8,
@@ -67,7 +65,7 @@ Il2CppApi = {
             local MethodsInfo = gg.getResults(gg.getResultsCount())
             gg.clearResults()
             for k, v in ipairs(MethodsInfo) do
-                v.address = v.address - self.Offset1
+                v.address = v.address - self.MethodNameOffset
                 local FinalAddress = self.value(gg.getValues({v})[1].value)
                 if (FinalAddress > libil[1].start and FinalAddress < libil[#libil]['end']) then 
                     FinalMethods[#FinalMethods + 1] = {
@@ -92,15 +90,15 @@ Il2CppApi = {
                 gg.searchPointer(0)
             end
             for key, value in ipairs(gg.getResults(gg.getResultsCount())) do
-                local NameAddress = self.value(gg.getValues({{address = value.address + self.Offset1,flags = self.MainType}})[1].value)
+                local NameAddress = self.value(gg.getValues({{address = value.address + self.MethodNameOffset,flags = self.MainType}})[1].value)
                 if NameAddress > self.value(data[1].start) and NameAddress < self.value(data[#data]['end']) then
-                    local AddressClass = self.value(gg.getValues({{address = value.address + self.Offset4,flags = self.MainType}})[1].value)
+                    local AddressClass = self.value(gg.getValues({{address = value.address + self.MethodClassOffset,flags = self.MainType}})[1].value)
                     RetList[#RetList + 1] = {
                         NameFucntion = self.Utf8ToString(NameAddress),
                         Offset = string.format("%X", off),
                         AddressInMemory = string.format("%X", self.value(value.value)),
                         AddressOffset = value.address,
-                        Class = self.Utf8ToString(gg.getValues({{address = AddressClass + self.Offset1,flags = self.MainType}})[1].value),
+                        Class = self.Utf8ToString(gg.getValues({{address = AddressClass + self.ClassNameOffset,flags = self.MainType}})[1].value),
                         ClassAddress = string.format('%X', AddressClass)
                     }
                 end
@@ -278,13 +276,13 @@ function il2cppfunc(...)
         local finaladdres = Protect:Call(Il2CppApi.SearchFunction, Il2CppApi, namefucntion)
         for k,v in pairs(finaladdres) do
             if (k ~= 'Error') then
-                local AddressClass = Il2CppApi.value(gg.getValues({{address = v.Address + Il2CppApi.Offset4,flags = Il2CppApi.MainType}})[1].value)
+                local AddressClass = Il2CppApi.value(gg.getValues({{address = v.Address + Il2CppApi.MethodClassOffset,flags = Il2CppApi.MainType}})[1].value)
                 RetIl2CppFuncs[#RetIl2CppFuncs + 1] = {
                     NameFucntion = namefucntion,
                     Offset = string.format("%X",v.AddressMethod - Il2CppApi.GetStartLibAddress(v.AddressMethod)),
                     AddressInMemory = string.format("%X",v.AddressMethod),
                     AddressOffset = v.Address,
-                    Class = Il2CppApi.Utf8ToString(gg.getValues({{address = AddressClass + Il2CppApi.Offset1, flags = Il2CppApi.MainType}})[1].value),
+                    Class = Il2CppApi.Utf8ToString(gg.getValues({{address = AddressClass + Il2CppApi.ClassNameOffset, flags = Il2CppApi.MainType}})[1].value),
                     ClassAddress = string.format('%X', AddressClass)
                 }
             else
@@ -317,11 +315,7 @@ function Il2cppClassesInfo(...)
     if #args == 0 then return {},"you didn't enter offsets" end 
     for keyClass, NameClass in pairs(args) do
         local FinalInfo = Protect:Call(Il2CppApi.GetClassInfo, Il2CppApi, NameClass, true, true)
-        if (FinalInfo['Error']) then
-            retaddress[#retaddress + 1] = {ClassName = NameClass, Error = FinalInfo['Error']}
-        else
-            retaddress[#retaddress + 1] = FinalInfo
-        end
+        retaddress[#retaddress + 1] = (FinalInfo['Error']) and {ClassName = NameClass, Error = FinalInfo['Error']} or FinalInfo
     end
     gg.clearResults() 
     return retaddress,'true'
