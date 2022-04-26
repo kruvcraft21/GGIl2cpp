@@ -86,7 +86,7 @@ print(il2cppfunc('Method2', 'Method1'))
 }     true
 ]]
 
-print(Il2cppClassesInfo('MyClass'))
+print(Il2cppClassesInfo({{ClassName = 'MyClass', MethodsDump = true, FieldsDump = true}}))
 
 --output
 --[[

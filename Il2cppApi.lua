@@ -310,12 +310,12 @@ function offsets(...)
     return retaddress,'true'
 end
 
-function Il2cppClassesInfo(...)
-    local retaddress, args = {}, {...}
-    if #args == 0 then return {},"you didn't enter offsets" end 
-    for keyClass, NameClass in pairs(args) do
-        local FinalInfo = Protect:Call(Il2CppApi.GetClassInfo, Il2CppApi, NameClass, true, true)
-        retaddress[#retaddress + 1] = (FinalInfo['Error']) and {ClassName = NameClass, Error = FinalInfo['Error']} or FinalInfo
+function Il2cppClassesInfo(tab)
+    local retaddress = {}
+    if #tab == 0 or type(tab) ~= 'table' then return {},"you didn't enter class name" end 
+    for keyClass, Class in pairs(tab) do
+        local FinalInfo = Protect:Call(Il2CppApi.GetClassInfo, Il2CppApi, Class.ClassName, Class.FieldsDump, Class.MethodsDump)
+        retaddress[#retaddress + 1] = (FinalInfo['Error']) and {ClassName = Class.ClassName, Error = FinalInfo['Error']} or FinalInfo
     end
     gg.clearResults() 
     return retaddress,'true'
