@@ -36,6 +36,24 @@ Il2CppApi = {
             end
         }))
     end,
+    Utf16ToString = function(Address)
+        local bytes, strAddress = {}, fixvalue32(Address) + (platform and 0x10 or 0x8)
+        local num = gg.getValues({{address = strAddress,flags = gg.TYPE_DWORD}})[1].value
+        if num > 0 and num < 200 then
+            for i = 1, num + 1 do
+                bytes[#bytes + 1] = {address = strAddress + (i * 0x2), flags = gg.TYPE_WORD}
+            end
+        end
+        return #bytes > 0 and tostring(setmetatable(gg.getValues(bytes), {
+            __tostring = function(self)
+                local Utf16 = getAlfUtf16()
+                for k,v in ipairs(self) do
+                    self[k] = v.value == 32 and " " or (Utf16[v.value] or "")
+                end
+                return table.concat(self)
+            end
+        })) or ""
+    end,
     IsClass = function(address)
         return (Il2CppApi.value(address) > Il2CppApi.value(data[1].start) and Il2CppApi.value(address) < Il2CppApi.value(data[#data]['end']))
     end,
@@ -252,6 +270,19 @@ function CheckIsValidData()
         end
     else gg.clearResults()
     end
+end
+
+function getAlfUtf16()
+    local Utf16 = {}
+    for s in string.gmatch('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', "..") do
+        local char = gg.bytes(s,'UTF-16LE')
+        Utf16[char[1] + (char[2] * 256)] = s
+    end
+    for s in string.gmatch("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_/0123456789-'", ".") do
+        local char = gg.bytes(s,'UTF-16LE')
+        Utf16[char[1] + (char[2] * 256)] = s
+    end
+    return Utf16
 end
 
 function il2cpp(...)
