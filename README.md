@@ -6,30 +6,19 @@ This script is only needed to make it easier to work with Il2cpp. This script wo
 
 ## About Api
 
-This Api has 5 functions :
+This Api has 4 functions :
 
-```Lua
-il2cpp()
-il2cppfunc()
-offsets()
+```lua
+Il2cpp()
+Il2cpp.FindMethods()
+Il2cpp.FindClass()
 addresspath()
-Il2cppClassesInfo()
 ```
-* "il2cpp()" - This function takes several arguments, but the first argument should be the name of the function, and the subsequent arguments should be constructs that should appear in this function.
-* "il2cppfunc()" - This function takes several arguments, all of these arguments must be method names. It outputs detailed information about the methods.
->"NameFucntion" - is the name of the method
 
->"Offset" - Offset of the method
-
->"AddressInMemory" - The address of the method in memory (libil2cpp.so (start address) + offset)
-
->"Class" - is the name of the class to which the method belongs
-
->"ClassAddress" - Class address
-
-* "offsets()" - outputs the same information as "il2cppfunc()", but there must be method offsets in the arguments.
+* "Il2cpp()" - This function takes from 0 to 2 arguments, it is needed to indicate the beginning of global-metadata and libil2cpp. Without it, the function located in the Il2cpp table will not work.
+* "Il2cpp.FindMethods()" - Searches for a method, or rather information on the method, by name or by offset, you can also send an address in memory to it.
+* "Il2cpp.FindClass()" - Searches for a class, or rather information on a method, by name or by address in memory.
 * "addresspath()" - is a function that was created to patch the desired address. The first argument should be an offset, and the subsequent ones should be constructs.
-* "Il2cppClassesInfo()" - this function is needed to get information about the classes that you will pass to it.
 
 ## How to use
 
@@ -62,82 +51,94 @@ As an example, I want to get information about the class and about the methods "
 ```Lua
 require('Il2cppApi')
 
-print(il2cppfunc('Method2', 'Method1'))
+print(Il2cpp.FindMethods({'Method2', 'Method1'}))
 
 --output
 --[[
-{ -- table(d14b949)
-    [1] = { -- table(9bd524e)
-        ['AddressInMemory'] = '512AAFFF',
-        ['AddressOffset'] = , -- some number
-        ['Class'] = 'MyClass',
-        ['ClassAddress'] = '',-- some number in hex
-        ['NameFucntion'] = 'Method2',
-        ['Offset'] = '12AAFFF',
+{
+    [1] = {
+        [1] = {
+            ['AddressInMemory'] = '512AAFFF',
+            ['MethodInfoAddress'] = , -- some number
+            ['ClassName'] = 'MyClass',
+            ['ClassAddress'] = '',-- some number in hex
+            ['MethodName'] = 'Method2',
+            ['Offset'] = '12AAFFF',
+            ['ParamCount'] = 0,
+        },
     },
-    [2] = { -- table(9bd524e)
-        ['AddressInMemory'] = '51234FFF',
-        ['AddressOffset'] = , -- some number
-        ['Class'] = 'MyClass',
-        ['ClassAddress'] = '',-- some number in hex
-        ['NameFucntion'] = 'Method1',
-        ['Offset'] = '1234FFF',
+    [2] = {
+        [1] = {
+            ['AddressInMemory'] = '51234FFF',
+            ['MethodInfoAddress'] = , -- some number
+            ['ClassName'] = 'MyClass',
+            ['ClassAddress'] = '',-- some number in hex
+            ['MethodName'] = 'Method1',
+            ['Offset'] = '1234FFF',
+            ['ParamCount'] = 0,
+        },
     },
-}     true
+}
 ]]
 
-print(Il2cppClassesInfo({{ClassName = 'MyClass', MethodsDump = true, FieldsDump = true}}))
+print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = true}}))
 
 --output
 --[[
-{ -- table(d136ff9)
-    [1] = { -- table(fabb3e)
-        ['Fields'] = { -- table(3f432bd)
-            [ 1] = { -- table(19d60b2)
-                ['Class'] = 'MyClass',
-                ['ClassAddress'] = '',-- some number in hex
-                ['IsStatic'] = true,
-                ['NameField'] = 'instance',
-                ['Offset'] = '0',
+{
+    [1] = {
+        [1] = {
+            ['ClassAddress'] = '',-- some number in hex
+            ['ClassName'] = 'MyClass',
+            ['Fields'] = {
+                [ 1] = { -- table(19d60b2)
+                    ['ClassName'] = 'MyClass',
+                    ['ClassAddress'] = '',-- some number in hex
+                    ['IsStatic'] = true,
+                    ['FieldName'] = 'instance',
+                    ['Offset'] = '0',
+                },
+                [ 2] = { -- table(f249803)
+                    ['ClassName'] = 'MyClass',
+                    ['ClassAddress'] = '',-- some number in hex
+                    ['IsStatic'] = false,
+                    ['FieldName'] = 'field1',
+                    ['Offset'] = '4',
+                },
+                [ 3] = { -- table(e37d380)
+                    ['ClassName'] = 'MyClass',
+                    ['ClassAddress'] = '',-- some number in hex
+                    ['IsStatic'] = false,
+                    ['FieldName'] = 'field2',
+                    ['Offset'] = 'C',
+                },
             },
-            [ 2] = { -- table(f249803)
-                ['Class'] = 'MyClass',
-                ['ClassAddress'] = '',-- some number in hex
-                ['IsStatic'] = false,
-                ['NameField'] = 'field1',
-                ['Offset'] = '4',
+            ['Methods'] = {
+                [ 1] = { -- table(8922eec)
+                    ['AddressInMemory'] = '51234FFF',
+                    ['MethodInfoAddress'] = , -- some number
+                    ['ClassName'] = 'MyClass',
+                    ['ClassAddress'] = '',-- some number in hex
+                    ['MethodName'] = 'Method1',
+                    ['Offset'] = '1234FFF',
+                    ['ParamCount'] = 0,
+                },
+                [ 2] = { -- table(71212b5)
+                    ['AddressInMemory'] = '512AAFFF',
+                    ['MethodInfoAddress'] = , -- some number
+                    ['ClassName'] = 'MyClass',
+                    ['ClassAddress'] = '',-- some number in hex
+                    ['MethodName'] = 'Method2',
+                    ['Offset'] = '12AAFFF',
+                    ['ParamCount'] = 0,
+                },
             },
-            [ 3] = { -- table(e37d380)
-                ['Class'] = 'MyClass',
-                ['ClassAddress'] = '',-- some number in hex
-                ['IsStatic'] = false,
-                ['NameField'] = 'field2',
-                ['Offset'] = 'C',
-            },
-        },
-        ['Methods'] = { -- table(fc2cd9f)
-            [ 1] = { -- table(8922eec)
-                ['AddressInMemory'] = '51234FFF',
-                ['AddressOffset'] = , -- some number
-                ['Class'] = 'MyClass',
-                ['ClassAddress'] = '',-- some number in hex
-                ['NameFucntion'] = 'Method1',
-                ['Offset'] = '1234FFF',
-            },
-            [ 2] = { -- table(71212b5)
-                ['AddressInMemory'] = '512AAFFF',
-                ['AddressOffset'] = , -- some number
-                ['Class'] = 'MyClass',
-                ['ClassAddress'] = '',-- some number in hex
-                ['NameFucntion'] = 'Method2',
-                ['Offset'] = '12AAFFF',
-            },
-        },
+        }
     },
-}     true
+}
 ]]
 
-local Method1 = il2cppfunc('Method1')
+local Method1 = Il2cpp.FindMethods({'Method1'})[1]
 for k,v in pairs(Method1) do
     if v.Class == 'MyClass' then 
         addresspath(tonumber(v.AddressInMemory,16),"\x20\x00\x80\x52","\xc0\x03\x5f\xd6")
