@@ -161,6 +161,9 @@ Il2cpp = {
         FieldsLink = platform and 0x80 or 0x40,
         FieldsStep = platform and 0x20 or 0x14,
         CountFields = platform and 0x120 or 0xA8,
+        GetClassName = function(self, ClassAddress)
+            return Il2cpp.Utf8ToString(gg.getValues({{address = Il2cpp.FixValue(ClassAddress) + self.NameOffset,flags = Il2cpp.MainType}})[1].value)
+        end,
         GetClassMethods = function (self, MethodsLink, Count, ClassName)
             local MethodsInfo, _MethodsInfo = {}, {}
             for i = 0, Count - 1 do
@@ -317,9 +320,7 @@ Il2cpp = {
             return FinalMethods
         end,
         FindMethodWithOffset = function (self, MethodOffset)
-            local MethodsInfo = {}
-            local tmpMethodsInfo = self.FindMethodWithAddressInMemory(Il2cpp.il2cppStart + MethodOffset, MethodOffset)
-            table.move(tmpMethodsInfo, 1, #tmpMethodsInfo, #MethodsInfo + 1, MethodsInfo)
+            local MethodsInfo = self.FindMethodWithAddressInMemory(Il2cpp.il2cppStart + MethodOffset, MethodOffset)
             if (#MethodsInfo == 0) then error('nothing was found for this offset 0x' .. string.format("%X", MethodOffset)) end
             return MethodsInfo
         end,
@@ -354,7 +355,7 @@ Il2cpp = {
                     Offset = _MethodsInfo[i].Offset or string.format("%X", MethodAddress - Il2cpp.il2cppStart),
                     AddressInMemory = string.format("%X", MethodAddress),
                     MethodInfoAddress = _MethodsInfo[i].MethodInfoAddress,
-                    ClassName = _MethodsInfo[i].ClassName or Il2cpp.Utf8ToString(gg.getValues({{address = Il2cpp.FixValue(MethodsInfo[index + 3].value) + Il2cpp.ClassApi.NameOffset,flags = Il2cpp.MainType}})[1].value),
+                    ClassName = _MethodsInfo[i].ClassName or Il2cpp.ClassApi:GetClassName(MethodsInfo[index + 3].value),
                     ClassAddress = string.format('%X', Il2cpp.FixValue(MethodsInfo[index + 3].value)),
                     ParamCount = MethodsInfo[index + 4].value
                 }
@@ -418,65 +419,65 @@ Il2cpp = {
 
 Il2cpp = setmetatable(Il2cpp, {
     __call = function(self, ...)
+        
+        local function FindGlobalMetaData()
+            local globalMetadata = gg.getRangesList('global-metadata.dat')
+            gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_OTHER)
+            if (#globalMetadata ~= 0) then gg.searchNumber(':filter_by_type_name',gg.TYPE_BYTE,false,gg.SIGN_EQUAL,globalMetadata[1].start,globalMetadata[#globalMetadata]['end']) end
+            if (gg.getResultsCount() == 0 or #globalMetadata == 0) then
+                globalMetadata = {}
+                gg.searchNumber(':filter_by_type_name', gg.TYPE_BYTE)
+                if (gg.getResultsCount() > 0) then
+                    gg.searchNumber(':f', gg.TYPE_BYTE)
+                    local filter_by_type_name = gg.getResults(gg.getResultsCount())
+                    gg.clearResults()
+                    for k,v in ipairs(gg.getRangesList()) do
+                        if (v.state == 'Ca' or v.state == 'A' or v.state == 'Cd' or v.state == 'Cb' or v.state == 'Ch' or v.state == 'O') then
+                            for key, val in ipairs(filter_by_type_name) do
+                                globalMetadata[#globalMetadata + 1] = (Il2CppApi.value(v.start) <= Il2CppApi.value(val.address) and Il2CppApi.value(val.address) < Il2CppApi.value(v['end'])) 
+                                    and v 
+                                    or nil
+                            end
+                        end
+                    end
+                end
+            else gg.clearResults()
+            end
+            return globalMetadata[1].start, globalMetadata[#globalMetadata]['end']
+        end
+
+        local function FindIl2cpp()
+            local il2cpp = gg.getRangesList('libil2cpp.so')
+            if (#il2cpp == 0) then
+                local splitconf = gg.getRangesList('split_config.')
+                gg.setRanges(gg.REGION_CODE_APP)
+                for k,v in ipairs(splitconf) do
+                    if (v.state == 'Xa') then
+                        gg.searchNumber(':il2cpp',gg.TYPE_BYTE,false,gg.SIGN_EQUAL,v.start,v['end'])
+                        if (gg.getResultsCount() > 0) then
+                            il2cpp[#il2cpp + 1] = v
+                            gg.clearResults()
+                        end
+                    end
+                end
+            end
+            return il2cpp[1].start, il2cpp[#il2cpp]['end']
+        end
+
+        -- self = Il2cpp
+
         local args = {...}
-        switch(#args, {
-            [0] = function(_Il2cpp, Addresses, FunctionForFound)
-                _Il2cpp.il2cppStart, _Il2cpp.il2cppEnd = FunctionForFound.FindIl2cpp()
-                _Il2cpp.globalMetadataStart, _Il2cpp.globalMetadataEnd = FunctionForFound.FindGlobalMetaData()
-            end,
-            [1] = function(_Il2cpp, Addresses, FunctionForFound)
-                _Il2cpp.il2cppStart, _Il2cpp.il2cppEnd = FunctionForFound.FindIl2cpp()
-                _Il2cpp.globalMetadataStart, _Il2cpp.globalMetadataEnd = Addresses[1].start, Addresses[1]['end']
-            end,
-            [2] = function(_Il2cpp, Addresses, FunctionForFound)
-                _Il2cpp.il2cppStart, _Il2cpp.il2cppEnd = Addresses[2].start, Addresses[2]['end']
-                _Il2cpp.globalMetadataStart, _Il2cpp.globalMetadataEnd = Addresses[1].start, Addresses[1]['end']
-            end
-        }, function ()
-            error("Много аргументов для функции Il2cpp\nMany arguments for the Il2cpp function")
-        end, self, args, {
-            FindIl2cpp = function()
-                local il2cpp = gg.getRangesList('libil2cpp.so')
-                if (#il2cpp == 0) then
-                    local splitconf = gg.getRangesList('split_config.')
-                    gg.setRanges(gg.REGION_CODE_APP)
-                    for k,v in ipairs(splitconf) do
-                        if (v.state == 'Xa') then
-                            gg.searchNumber(':il2cpp',gg.TYPE_BYTE,false,gg.SIGN_EQUAL,v.start,v['end'])
-                            if (gg.getResultsCount() > 0) then
-                                il2cpp[#il2cpp + 1] = v
-                                gg.clearResults()
-                            end
-                        end
-                    end
-                end
-                return il2cpp[1].start, il2cpp[#il2cpp]['end']
-            end,
-            FindGlobalMetaData = function()
-                local globalMetadata = gg.getRangesList('global-metadata.dat')
-                gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_OTHER)
-                if (#globalMetadata ~= 0) then gg.searchNumber(':filter_by_type_name',gg.TYPE_BYTE,false,gg.SIGN_EQUAL,globalMetadata[1].start,globalMetadata[#globalMetadata]['end']) end
-                if (gg.getResultsCount() == 0 or #globalMetadata == 0) then
-                    globalMetadata = {}
-                    gg.searchNumber(':filter_by_type_name', gg.TYPE_BYTE)
-                    if (gg.getResultsCount() > 0) then
-                        gg.searchNumber(':f', gg.TYPE_BYTE)
-                        local filter_by_type_name = gg.getResults(gg.getResultsCount())
-                        gg.clearResults()
-                        for k,v in ipairs(gg.getRangesList()) do
-                            if (v.state == 'Ca' or v.state == 'A' or v.state == 'Cd' or v.state == 'Cb' or v.state == 'Ch' or v.state == 'O') then
-                                for key, val in ipairs(filter_by_type_name) do
-                                    globalMetadata[#globalMetadata + 1] = (Il2CppApi.value(v.start) <= Il2CppApi.value(val.address) and Il2CppApi.value(val.address) < Il2CppApi.value(v['end'])) 
-                                        and v 
-                                        or nil
-                                end
-                            end
-                        end
-                    end
-                else gg.clearResults()
-                end
-                return globalMetadata[1].start, globalMetadata[#globalMetadata]['end']
-            end
-        })
+
+        if args[1] then
+            self.il2cppStart, self.il2cppEnd = args[1].start, args[1]['end']
+        else
+            self.il2cppStart, self.il2cppEnd = FindIl2cpp()
+        end
+
+        if args[2] then
+            self.globalMetadataStart, self.globalMetadataEnd = args[2].start, args[2]['end']
+        else
+            self.globalMetadataStart, self.globalMetadataEnd = FindGlobalMetaData()
+        end
     end
 })
