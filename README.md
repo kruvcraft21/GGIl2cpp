@@ -159,12 +159,7 @@ arm64:
 
 ]]
 ```
-
-<div style="background-color:#e63946;">
-
 Without the `Il2cpp()` function, some functions will not work, since this function remembers or finds the location `libil2cpp.so` and `global-metadata.dat`.
-
-</div>
 
 Example of using this function:
 
