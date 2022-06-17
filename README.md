@@ -6,7 +6,7 @@ This script is only needed to make it easier to work with Il2cpp. This script wo
 
 ## About Api
 
-This Api has 4 functions :
+This Api has 4 functions 
 
 ```lua
 Il2cpp()
@@ -14,6 +14,7 @@ Il2cpp.FindMethods()
 Il2cpp.FindClass()
 addresspath()
 ```
+
 
 * "Il2cpp()" - This function takes from 0 to 2 arguments, it is needed to indicate the beginning of global-metadata and libil2cpp. Without it, the function located in the Il2cpp table will not work.
 * "Il2cpp.FindMethods()" - Searches for a method, or rather information on the method, by name or by offset, you can also send an address in memory to it.
@@ -46,10 +47,12 @@ class MyClass {
 }
 ```
 
-As an example, I want to get information about the class and about the methods "Method2" and "Method1" :
+As an example, I want to get information about the class and about the methods `Method2` and `Method1` :
 
 ```Lua
 require('Il2cppApi')
+
+Il2cpp()
 
 print(Il2cpp.FindMethods({'Method2', 'Method1'}))
 
@@ -155,4 +158,24 @@ arm64:
 51235003 C0035FD6 ret
 
 ]]
+```
+
+<div style="background-color:#e63946;">
+
+Without the `Il2cpp()` function, some functions will not work, since this function remembers or finds the location `libil2cpp.so` and `global-metadata.dat`.
+
+</div>
+
+Example of using this function:
+
+```lua
+Il2cpp() -- in this case, "Il2cpp()" will find itself "libil2cpp.so" and "global-metadata.dat".
+
+local libil2cpp = {start = 0x1234, ['end'] = 0x8888}
+
+Il2cpp(libil2cpp) -- in this case, "Il2cpp()" will find "global-metadata.dat" itself and remember the location"libil2cpp.so ", which was given to him.
+
+local globalmetadata = {start = 0x9888, ['end'] = 0x14888}
+
+Il2cpp(libil2cpp, globalmetadata) -- in this case, "Il2cpp()" and will remember the location "libil2cpp.so " and "global-metadata.dat", which was passed to him.
 ```
