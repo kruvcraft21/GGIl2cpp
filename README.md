@@ -1,4 +1,4 @@
-# Il2cpp Api for GameGuardian
+# Il2cpp Module for GameGuardian
 
 ## About script
 This script is only needed to make it easier to work with Il2cpp. This script works through the program [GameGuardian](https://gameguardian.net). The script is completely built on Il2cppApi, you can easily find the necessary information on the interface yourself and create a similar script.
