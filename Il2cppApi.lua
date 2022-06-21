@@ -48,6 +48,64 @@ function addresspath(StartAddress, ...)
     gg.setValues(patch)
 end
 
+function ChooseIl2cppVersion(version)
+    version = Il2cppApi[version] or ((version <= 24 and version > 0) and 24 or ((version > 24 and version <= 27) and 27 or 0))
+    if (Il2cppApi[version]) then
+        local api = Il2cppApi[version]
+
+        Il2cpp.FieldApi.Offset = api.FieldApiOffset
+        Il2cpp.FieldApi.Type = api.FieldApiType
+        Il2cpp.FieldApi.ClassOffset = api.FieldApiClassOffset
+
+        Il2cpp.ClassApi.NameOffset = api.ClassApiNameOffset
+        Il2cpp.ClassApi.MethodsStep = api.ClassApiMethodsStep
+        Il2cpp.ClassApi.CountMethods = api.ClassApiCountMethods
+        Il2cpp.ClassApi.MethodsLink = api.ClassApiMethodsLink
+        Il2cpp.ClassApi.FieldsLink = api.ClassApiFieldsLink
+        Il2cpp.ClassApi.FieldsStep = api.ClassApiFieldsStep
+        Il2cpp.ClassApi.CountFields = api.ClassApiCountFields
+
+        Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
+        Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
+        Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
+    else
+        error('Not support this il2cpp version')
+    end 
+end
+
+Il2cppApi = {
+    [24] = {
+        FieldApiOffset = platform and 0x18 or 0xC,
+        FieldApiType = platform and 0x8 or 0x4,
+        FieldApiClassOffset = platform and 0x10 or 0x8,
+        ClassApiNameOffset = platform and 0x10 or 0x8,
+        ClassApiMethodsStep = platform and 3 or 2,
+        ClassApiCountMethods = platform and 0x118 or 0xA4,
+        ClassApiMethodsLink = platform and 0x98 or 0x4C,
+        ClassApiFieldsLink = platform and 0x80 or 0x40,
+        ClassApiFieldsStep = platform and 0x20 or 0x14,
+        ClassApiCountFields = platform and 0x11c or 0xA8,
+        MethodsApiClassOffset = platform and 0x18 or 0xC,
+        MethodsApiNameOffset = platform and 0x10 or 0x8,
+        MethodsApiParamCount = platform and 0x4A or 0x2A,
+    },
+    [27] = {
+        FieldApiOffset = platform and 0x18 or 0xC,
+        FieldApiType = platform and 0x8 or 0x4,
+        FieldApiClassOffset = platform and 0x10 or 0x8,
+        ClassApiNameOffset = platform and 0x10 or 0x8,
+        ClassApiMethodsStep = platform and 3 or 2,
+        ClassApiCountMethods = platform and 0x11C or 0xA4,
+        ClassApiMethodsLink = platform and 0x98 or 0x4C,
+        ClassApiFieldsLink = platform and 0x80 or 0x40,
+        ClassApiFieldsStep = platform and 0x20 or 0x14,
+        ClassApiCountFields = platform and 0x120 or 0xA8,
+        MethodsApiClassOffset = platform and 0x18 or 0xC,
+        MethodsApiNameOffset = platform and 0x10 or 0x8,
+        MethodsApiParamCount = platform and 0x4A or 0x2A,
+    }
+}
+
 Il2cpp = {
     il2cppStart = 0,
     il2cppEnd = 0,
@@ -144,7 +202,7 @@ Il2cpp = {
             for i = 1, #_FieldsInfo do
                 local index = (i - 1) << 2
                 _FieldsInfo[i] = {
-                    ClassName = _FieldsInfo.ClassName or Il2cpp.Utf8ToString(gg.getValues({{address = FieldsInfo[index + 4].value + Il2cpp.ClassApi.NameOffset, flags = Il2cpp.MainType}})[1].value),
+                    ClassName = _FieldsInfo.ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[index + 4].value),
                     ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[index + 3].value)),
                     FieldName = Il2cpp.Utf8ToString(FieldsInfo[index + 1].value),
                     Offset = string.format('%X', FieldsInfo[index + 2].value),
@@ -255,7 +313,7 @@ Il2cpp = {
         end,
         FindClassWithAddressInMemory = function(self, ClassAddress)
             local assembly, ResultTable = Il2cpp.FixValue(gg.getValues({{address = ClassAddress, flags = Il2cpp.MainType}})[1].value), {}
-            if (Il2cpp.Utf8ToString(gg.getValues({{address = assembly,flags = v.flags}})[1].value):find(".dll")) then 
+            if (Il2cpp.Utf8ToString(gg.getValues({{address = assembly,flags = Il2cpp.MainType}})[1].value):find(".dll")) then 
                 ResultTable[#ResultTable + 1] = {
                     ClassInfoAddress = ClassAddress,
                 }
@@ -434,7 +492,7 @@ Il2cpp = setmetatable(Il2cpp, {
                     for k,v in ipairs(gg.getRangesList()) do
                         if (v.state == 'Ca' or v.state == 'A' or v.state == 'Cd' or v.state == 'Cb' or v.state == 'Ch' or v.state == 'O') then
                             for key, val in ipairs(filter_by_type_name) do
-                                globalMetadata[#globalMetadata + 1] = (Il2CppApi.value(v.start) <= Il2CppApi.value(val.address) and Il2CppApi.value(val.address) < Il2CppApi.value(v['end'])) 
+                                globalMetadata[#globalMetadata + 1] = (Il2cpp.FixValue(v.start) <= Il2cpp.FixValue(val.address) and Il2cpp.FixValue(val.address) < Il2cpp.FixValue(v['end'])) 
                                     and v 
                                     or nil
                             end
@@ -478,6 +536,12 @@ Il2cpp = setmetatable(Il2cpp, {
             self.globalMetadataStart, self.globalMetadataEnd = args[2].start, args[2]['end']
         else
             self.globalMetadataStart, self.globalMetadataEnd = FindGlobalMetaData()
+        end
+
+        if args[3] then
+            ChooseIl2cppVersion(args[3])
+        else
+            ChooseIl2cppVersion(gg.getValues({{address = self.globalMetadataStart + 0x4, flags = gg.TYPE_DWORD}})[1].value)
         end
     end
 })

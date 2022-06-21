@@ -159,7 +159,7 @@ arm64:
 
 ]]
 ```
-Without the `Il2cpp()` function, some functions will not work, since this function remembers or finds the location `libil2cpp.so` and `global-metadata.dat`.
+Without the `Il2cpp()` function, some functions will not work, since this function remembers or finds the location `libil2cpp.so` and `global-metadata.dat`. You can also specify the version of `Il2cpp`, this will be required in cases where the module cannot determine the version itself.
 
 Example of using this function:
 
@@ -173,4 +173,6 @@ Il2cpp(libil2cpp) -- in this case, "Il2cpp()" will find "global-metadata.dat" it
 local globalmetadata = {start = 0x9888, ['end'] = 0x14888}
 
 Il2cpp(libil2cpp, globalmetadata) -- in this case, "Il2cpp()" and will remember the location "libil2cpp.so " and "global-metadata.dat", which was passed to him.
+
+Il2cpp(nil, nil, 27) -- in this case , the method will find "libil2cpp.so" and "global-metadata.dat" and will remember the "Il2cpp" version
 ```
