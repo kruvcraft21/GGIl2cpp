@@ -4,9 +4,9 @@
 This script is only needed to make it easier to work with Il2cpp. This script works through the program [GameGuardian](https://gameguardian.net). The script is completely built on Il2cppApi, you can easily find the necessary information on the interface yourself and create a similar script.
 
 
-## About Api
+## About Module
 
-This Api has 4 functions 
+This Module has 4 functions 
 
 ```lua
 Il2cpp()
