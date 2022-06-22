@@ -1,14 +1,15 @@
 local platform = gg.getTargetInfo().x64
 
-function switch(check, table, e, ...)
+function switch(check, tableForChoose, e, ...)
+    local args = {...}
     return ({
         xpcall(
-            table[check],
+            tableForChoose[check],
             function ()
-                return table[check] or (
+                return tableForChoose[check] or (
                     function()
                         if type(e) ~= 'function' then return e end
-                        return e()
+                        return e(table.unpack(args))
                     end
                 )()
             end,
@@ -48,8 +49,19 @@ function addresspath(StartAddress, ...)
     gg.setValues(patch)
 end
 
+function GetTypeClassName(index)
+    return Il2cpp.GlobalMetadataApi:GetClassName(index)
+end
+
+function CheckSupportType(index, typeIndex)
+    if not (Il2cpp.TypeApi.tableTypes[typeIndex]) then
+        return "not support type -> 0x" .. string.format('%X', typeIndex)
+    end
+    return Il2cpp.GlobalMetadataApi:GetClassName(index)
+end
+
 function ChooseIl2cppVersion(version)
-    version = Il2cppApi[version] or ((version <= 24 and version > 0) and 24 or ((version > 24 and version <= 27) and 27 or 0))
+    version = (version <= 24 and version > 0) and 24 or ((version > 24 and version <= 27) and 27 or 0)
     if (Il2cppApi[version]) then
         local api = Il2cppApi[version]
 
@@ -68,6 +80,14 @@ function ChooseIl2cppVersion(version)
         Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
         Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
         Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
+        Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
+
+        Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
+        Il2cpp.GlobalMetadataApi.typeDefinitionsOffset = api.typeDefinitionsOffset
+        Il2cpp.GlobalMetadataApi.stringOffset = api.stringOffset
+        Il2cpp.GlobalMetadataApi.version = version
+
+        Il2cpp.TypeApi.Type = api.TypeApiType
     else
         error('Not support this il2cpp version')
     end 
@@ -88,6 +108,11 @@ Il2cppApi = {
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
+        MethodsApiReturnType = platform and 0x20 or 0x10,
+        typeDefinitionsSize = 92,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        TypeApiType = platform and 0xA or 0x6,
     },
     [27] = {
         FieldApiOffset = platform and 0x18 or 0xC,
@@ -103,6 +128,11 @@ Il2cppApi = {
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
+        MethodsApiReturnType = platform and 0x20 or 0x10,
+        typeDefinitionsSize = 88,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        TypeApiType = platform and 0xA or 0x6,
     }
 }
 
@@ -135,7 +165,7 @@ Il2cpp = {
         return searchArgs
     end,
     Utf8ToString = function(Address)
-        local bytes, char = {}, {address = Il2cpp.FixValue(Address), flags = gg.TYPE_BYTE}
+        local bytes, char = {}, {address = Address, flags = gg.TYPE_BYTE}
         while gg.getValues({char})[1].value > 0 do
             bytes[#bytes + 1] = {address = char.address, flags = char.flags}
             char.address = char.address + 0x1
@@ -171,10 +201,70 @@ Il2cpp = {
         return platform and val or val & 0xFFFFFFFF
     end,
     MainType = platform and gg.TYPE_QWORD or gg.TYPE_DWORD,
+    GlobalMetadataApi = {
+        typeDefinitionsSize = 0x88,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        version = 27,
+        GetStringFromIndex = function(self, index)
+            local stringDefinitions = Il2cpp.globalMetadataStart + gg.getValues({{address = Il2cpp.globalMetadataStart + self.stringOffset, flags = gg.TYPE_DWORD}})[1].value
+            return Il2cpp.Utf8ToString(stringDefinitions + index)
+        end,
+        GetClassName = function(self, index)
+            local typeDefinitions = Il2cpp.globalMetadataStart + gg.getValues({{address = Il2cpp.globalMetadataStart + self.typeDefinitionsOffset, flags = gg.TYPE_DWORD}})[1].value
+            local typeDefinition = gg.getValues({{address = self.version < 27 and (self.typeDefinitionsSize * index) + typeDefinitions or Il2cpp.FixValue(index), flags = gg.TYPE_DWORD}})[1].value
+            return self:GetStringFromIndex(typeDefinition)
+        end
+    },
+    TypeApi = {
+        Type = platform and 0xA or 0x6,
+        tableTypes = {
+            [1] = "void",
+            [2] = "bool",
+            [3] = "char",
+            [4] = "sbyte",
+            [5] = "byte",
+            [6] = "short",
+            [7] = "ushort",
+            [8] = "int",
+            [9] = "uint",
+            [10] = "long",
+            [11] = "ulong",
+            [12] = "float",
+            [13] = "double",
+            [14] = "string",
+            [22] = "TypedReference",
+            [24] = "IntPtr",
+            [25] = "UIntPtr",
+            [28] = "object",
+            [17] = GetTypeClassName,
+            [18] = GetTypeClassName,
+            [29] = function(index)
+                local typeMassiv = gg.getValues({
+                    {
+                        address = Il2cpp.FixValue(index),
+                        flags = Il2cpp.MainType
+                    },
+                    {
+                        address = Il2cpp.FixValue(index) + Il2cpp.TypeApi.Type,
+                        flags = gg.TYPE_WORD
+                    }
+                })
+                return Il2cpp.TypeApi:GetTypeName(typeMassiv[2].value, typeMassiv[1].value) .. "[]"
+            end,
+            [21] = function(index)
+                index = gg.getValues({{address = Il2cpp.FixValue(index), flags = gg.TYPE_DWORD}})[1].value
+                return Il2cpp.GlobalMetadataApi:GetClassName(index)
+            end
+        },
+        GetTypeName = function(self, typeIndex, index)
+            return switch(typeIndex, self.tableTypes, CheckSupportType, index, typeIndex)
+        end
+    },
     FieldApi = {
         Offset = platform and 0x18 or 0xC,
         Type = platform and 0x8 or 0x4,
-        ClassOffset = platform and 0x10 or 0x8, 
+        ClassOffset = platform and 0x10 or 0x8,
         UnpackFieldInfo = function(self, FieldInfo)
             return {
                 { -- Field Name
@@ -201,12 +291,28 @@ Il2cpp = {
         DecodeFieldsInfo = function(self, _FieldsInfo, FieldsInfo)
             for i = 1, #_FieldsInfo do
                 local index = (i - 1) << 2
+                local TypeInfo = Il2cpp.FixValue(FieldsInfo[index + 3].value)
+                local _TypeInfo = gg.getValues({
+                    {
+                        address = TypeInfo + self.Type,
+                        flags = gg.TYPE_WORD
+                    },
+                    { -- type index
+                        address = TypeInfo + Il2cpp.TypeApi.Type,
+                        flags = gg.TYPE_WORD
+                    },
+                    { -- index
+                        address = TypeInfo,
+                        flags = Il2cpp.MainType
+                    }
+                })
                 _FieldsInfo[i] = {
                     ClassName = _FieldsInfo.ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[index + 4].value),
-                    ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[index + 3].value)),
-                    FieldName = Il2cpp.Utf8ToString(FieldsInfo[index + 1].value),
+                    ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[index + 4].value)),
+                    FieldName = Il2cpp.Utf8ToString(Il2cpp.FixValue(FieldsInfo[index + 1].value)),
                     Offset = string.format('%X', FieldsInfo[index + 2].value),
-                    IsStatic = (gg.getValues({{address = Il2cpp.FixValue(FieldsInfo[index + 3].value) + self.Type, flags = gg.TYPE_WORD}})[1].value & 0x10) ~= 0
+                    IsStatic = (_TypeInfo[1].value & 0x10) ~= 0,
+                    Type = Il2cpp.TypeApi:GetTypeName(_TypeInfo[2].value, _TypeInfo[3].value)
                 }
             end
         end
@@ -220,7 +326,7 @@ Il2cpp = {
         FieldsStep = platform and 0x20 or 0x14,
         CountFields = platform and 0x120 or 0xA8,
         GetClassName = function(self, ClassAddress)
-            return Il2cpp.Utf8ToString(gg.getValues({{address = Il2cpp.FixValue(ClassAddress) + self.NameOffset,flags = Il2cpp.MainType}})[1].value)
+            return Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{address = Il2cpp.FixValue(ClassAddress) + self.NameOffset,flags = Il2cpp.MainType}})[1].value))
         end,
         GetClassMethods = function (self, MethodsLink, Count, ClassName)
             local MethodsInfo, _MethodsInfo = {}, {}
@@ -282,7 +388,7 @@ Il2cpp = {
                 }
             })
             return {
-                ClassName = ClassInfo.Class or Il2cpp.Utf8ToString(_ClassInfo[1].value),
+                ClassName = ClassInfo.Class or Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[1].value)),
                 ClassAddress = string.format('%X', Il2cpp.FixValue(ClassInfo.ClassInfoAddress)),
                 Methods = (_ClassInfo[2].value > 0 and Config.MethodsDump) and self:GetClassMethods(_ClassInfo[4].value, _ClassInfo[2].value, ClassInfo.Class) or nil,
                 Fields = (_ClassInfo[3].value > 0 and Config.FieldsDump) and self:GetClassFields(_ClassInfo[5].value, _ClassInfo[3].value, ClassInfo.Class) or nil
@@ -300,7 +406,7 @@ Il2cpp = {
                 for k,v in ipairs(ClassNamePoint) do
                     local MainClass = gg.getValues({{address = v.address - self.NameOffset,flags = v.flags}})[1]
                     local assembly = Il2cpp.FixValue(MainClass.value)
-                    if (Il2cpp.Utf8ToString(gg.getValues({{address = assembly,flags = v.flags}})[1].value):find(".dll")) then 
+                    if (Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{address = assembly,flags = v.flags}})[1].value)):find(".dll")) then 
                         ResultTable[#ResultTable + 1] = {
                             ClassInfoAddress = Il2cpp.FixValue(MainClass.address),
                             ClassName = ClassName
@@ -313,7 +419,7 @@ Il2cpp = {
         end,
         FindClassWithAddressInMemory = function(self, ClassAddress)
             local assembly, ResultTable = Il2cpp.FixValue(gg.getValues({{address = ClassAddress, flags = Il2cpp.MainType}})[1].value), {}
-            if (Il2cpp.Utf8ToString(gg.getValues({{address = assembly,flags = Il2cpp.MainType}})[1].value):find(".dll")) then 
+            if (Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{address = assembly,flags = Il2cpp.MainType}})[1].value)):find(".dll")) then 
                 ResultTable[#ResultTable + 1] = {
                     ClassInfoAddress = ClassAddress,
                 }
@@ -344,6 +450,7 @@ Il2cpp = {
         ClassOffset = platform and 0x18 or 0xC,
         NameOffset = platform and 0x10 or 0x8,
         ParamCount = platform and 0x4A or 0x2A,
+        ReturnType = platform and 0x20 or 0x10,
         FindMethodWithName = function(self, MethodName)
             local FinalMethods, name = {}, "00 " .. MethodName:gsub('.', function (c) return string.format('%02X', string.byte(c)) .. " " end) .. "00"
             gg.clearResults()
@@ -406,16 +513,28 @@ Il2cpp = {
         end,
         DecodeMethodsInfo = function(self, _MethodsInfo, MethodsInfo)
             for i = 1, #_MethodsInfo do
-                local index = (i - 1) << 2
+                local index = (i - 1) * 5
+                local TypeInfo = Il2cpp.FixValue(MethodsInfo[index + 5].value)
+                local _TypeInfo = gg.getValues({
+                    { -- type index
+                        address = TypeInfo + Il2cpp.TypeApi.Type,
+                        flags = gg.TYPE_WORD
+                    },
+                    { -- index
+                        address = TypeInfo,
+                        flags = Il2cpp.MainType
+                    }
+                })
                 local MethodAddress = Il2cpp.FixValue(MethodsInfo[index + 1].value)
                 _MethodsInfo[i] = {
-                    MethodName = _MethodsInfo[i].MethodName or Il2cpp.Utf8ToString(MethodsInfo[index + 2].value),
+                    MethodName = _MethodsInfo[i].MethodName or Il2cpp.Utf8ToString(Il2cpp.FixValue(MethodsInfo[index + 2].value)),
                     Offset = _MethodsInfo[i].Offset or string.format("%X", MethodAddress - Il2cpp.il2cppStart),
                     AddressInMemory = string.format("%X", MethodAddress),
                     MethodInfoAddress = _MethodsInfo[i].MethodInfoAddress,
                     ClassName = _MethodsInfo[i].ClassName or Il2cpp.ClassApi:GetClassName(MethodsInfo[index + 3].value),
                     ClassAddress = string.format('%X', Il2cpp.FixValue(MethodsInfo[index + 3].value)),
-                    ParamCount = MethodsInfo[index + 4].value
+                    ParamCount = MethodsInfo[index + 4].value,
+                    ReturnType = Il2cpp.TypeApi:GetTypeName(_TypeInfo[1].value, _TypeInfo[2].value)
                 }
             end
         end,
@@ -436,6 +555,10 @@ Il2cpp = {
                 { -- Param Count
                     address = MethodInfo.MethodInfoAddress + self.ParamCount,
                     flags = gg.TYPE_WORD
+                },
+                { -- Return Type
+                    address = MethodInfo.MethodInfoAddress + self.ReturnType,
+                    flags = Il2cpp.MainType
                 }
             }, 
             {

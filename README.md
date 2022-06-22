@@ -68,6 +68,7 @@ print(Il2cpp.FindMethods({'Method2', 'Method1'}))
             ['MethodName'] = 'Method2',
             ['Offset'] = '12AAFFF',
             ['ParamCount'] = 0,
+            ['ReturnType'] = 'void',
         },
     },
     [2] = {
@@ -79,6 +80,7 @@ print(Il2cpp.FindMethods({'Method2', 'Method1'}))
             ['MethodName'] = 'Method1',
             ['Offset'] = '1234FFF',
             ['ParamCount'] = 0,
+            ['ReturnType'] = 'int',
         },
     },
 }
@@ -100,6 +102,7 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
                     ['IsStatic'] = true,
                     ['FieldName'] = 'instance',
                     ['Offset'] = '0',
+                    ['Type'] = 'MyClass',
                 },
                 [ 2] = { -- table(f249803)
                     ['ClassName'] = 'MyClass',
@@ -107,6 +110,7 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
                     ['IsStatic'] = false,
                     ['FieldName'] = 'field1',
                     ['Offset'] = '4',
+                    ['Type'] = 'int',
                 },
                 [ 3] = { -- table(e37d380)
                     ['ClassName'] = 'MyClass',
@@ -114,6 +118,7 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
                     ['IsStatic'] = false,
                     ['FieldName'] = 'field2',
                     ['Offset'] = 'C',
+                    ['Type'] = 'string',
                 },
             },
             ['Methods'] = {
@@ -125,6 +130,7 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
                     ['MethodName'] = 'Method1',
                     ['Offset'] = '1234FFF',
                     ['ParamCount'] = 0,
+                    ['ReturnType'] = 'int',
                 },
                 [ 2] = { -- table(71212b5)
                     ['AddressInMemory'] = '512AAFFF',
@@ -134,6 +140,17 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
                     ['MethodName'] = 'Method2',
                     ['Offset'] = '12AAFFF',
                     ['ParamCount'] = 0,
+                    ['ReturnType'] = 'void',
+                },
+                [ 3] = { -- table(71212b5)
+                    ['AddressInMemory'] = '512A1435',
+                    ['MethodInfoAddress'] = , -- some number
+                    ['ClassName'] = 'MyClass',
+                    ['ClassAddress'] = '',-- some number in hex
+                    ['MethodName'] = 'Start',
+                    ['Offset'] = '12A1435',
+                    ['ParamCount'] = 0,
+                    ['ReturnType'] = 'void',
                 },
             },
         }
