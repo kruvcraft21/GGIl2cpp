@@ -1,24 +1,28 @@
 # Il2cpp Module for GameGuardian
 
 ## About script
-This script is only needed to make it easier to work with Il2cpp. This script works through the program [GameGuardian](https://gameguardian.net). With the help of the module, you can get information about the method or class that interests you.
+This script is only needed to make it easier to work with Il2cpp. This script works through the program [GameGuardian](https://gameguardian.net). With the help of the module, you can get information about the method or class that interests you. 
+
+The module has support for the [Lua](https://marketplace.visualstudio.com/items?itemName=yinfei.luahelper) plugin for `VS Code`, that is, some functions have a description that this plugin can display.
 
 
 ## About Module
 
-This Module has 4 functions 
+This Module has 5 functions 
 
 ```lua
 Il2cpp()
 Il2cpp.FindMethods()
 Il2cpp.FindClass()
+Il2cpp.PatchesAddress()
 addresspath()
 ```
 
 
 * "Il2cpp()" - This function takes from 0 to 2 arguments, it is needed to indicate the beginning of global-metadata and libil2cpp. Without it, the function located in the Il2cpp table will not work.
 * "Il2cpp.FindMethods()" - Searches for a method, or rather information on the method, by name or by offset, you can also send an address in memory to it.
-* "Il2cpp.FindClass()" - Searches for a class, or rather information on a method, by name or by address in memory.
+* "Il2cpp.FindClass()" - Searches for a class, by name, or by address in memory.
+* "Il2cpp.PatchesAddress()" - Patch `Bytescodes` to `add`
 * "addresspath()" - is a function that was created to patch the desired address. The first argument should be an offset, and the subsequent ones should be constructs.
 
 ## How to use
@@ -159,7 +163,7 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
 ]]
 
 local Method1 = Il2cpp.FindMethods({'Method1'})[1]
-for k,v in pairs(Method1) do
+for k,v in ipairs(Method1) do
     if v.Class == 'MyClass' then 
         addresspath(tonumber(v.AddressInMemory,16),"\x20\x00\x80\x52","\xc0\x03\x5f\xd6")
     end
@@ -175,6 +179,26 @@ arm64:
 51235003 C0035FD6 ret
 
 ]]
+
+local Method1 = Il2cpp.FindMethods({'Method1'})[1]
+for k,v in ipairs(Method1) do
+    if v.Class == 'MyClass' then 
+        Il2cpp.PatchesAddress(tonumber(v.AddressInMemory,16),"\x20\x00\x80\x52\xc0\x03\x5f\xd6")
+    end
+end
+
+--output
+--[[
+this code changes will change the method "Method1", so that it constantly returns 1
+
+arm64:
+
+51234FFF 20008052 mov w0,#0x1
+51235003 C0035FD6 ret
+
+]]
+
+
 ```
 Without the `Il2cpp()` function, some functions will not work, since this function remembers or finds the location `libil2cpp.so` and `global-metadata.dat`. You can also specify the version of `Il2cpp`, this will be required in cases where the module cannot determine the version itself.
 
@@ -193,3 +217,46 @@ Il2cpp(libil2cpp, globalmetadata) -- in this case, "Il2cpp()" and will remember 
 
 Il2cpp(nil, nil, 27) -- in this case , the method will find "libil2cpp.so" and "global-metadata.dat" and will remember the "Il2cpp" version
 ```
+
+It is worth talking about processing the results of the module.
+
+If the search fails, the functions will return a table with an error. Therefore, I recommend using `ipairs` to work with search results, but `pairs` can also be used, only you will have to check the key coming for processing. Otherwise, you may get a missing field error.
+
+Example:
+```Lua
+local searchResult = Il2cpp.FindMethods({'Method2', 'Method1', 'method does not exist'})
+
+for k,v in ipairs(searchResult[1]) do
+    print(v.ClassName)
+end
+
+-- output
+--[[
+    MyClass
+]]
+
+for k,v in pairs(searchResult[2]) do
+    if k ~= 'Error' then print(v.ClassName) end
+end
+
+-- output
+--[[
+    MyClass
+]]
+
+for k,v in pairs(searchResult[3]) do
+    print(v.ClassName)
+end
+
+-- output
+--[[
+    nil
+]]
+
+```
+
+## Memorizing Il2cpp Search Result
+
+`Memorizing Il2cpp Search Result` is a special simple system to speed up the module. It remembers the search results, so far it only works with `Il2cpp.FindMethods`, since for `Il2cpp.FindClass` it is necessary to do a lot of checks, which may lead to the module not being effective. But in the future, this system will be improved to work with all types of search.
+
+It is worth noting that any call to the `Il2cpp()` function will reset this system.

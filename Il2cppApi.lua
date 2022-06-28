@@ -40,6 +40,8 @@ function getAlfUtf16()
     return Utf16
 end
 
+--- Is a function that was created to patch the desired address. The first argument should be an offset, and the subsequent ones should be constructs.
+---@param StartAddress number
 function addresspath(StartAddress, ...)
     local args, patch = {...}, {}
     for i = 1,#args do
@@ -58,39 +60,6 @@ function CheckSupportType(index, typeIndex)
         return "not support type -> 0x" .. string.format('%X', typeIndex)
     end
     return Il2cpp.GlobalMetadataApi:GetClassName(index)
-end
-
-function ChooseIl2cppVersion(version)
-    version = (version <= 24 and version > 0) and 24 or ((version > 24 and version <= 27) and 27 or 0)
-    if (Il2cppApi[version]) then
-        local api = Il2cppApi[version]
-
-        Il2cpp.FieldApi.Offset = api.FieldApiOffset
-        Il2cpp.FieldApi.Type = api.FieldApiType
-        Il2cpp.FieldApi.ClassOffset = api.FieldApiClassOffset
-
-        Il2cpp.ClassApi.NameOffset = api.ClassApiNameOffset
-        Il2cpp.ClassApi.MethodsStep = api.ClassApiMethodsStep
-        Il2cpp.ClassApi.CountMethods = api.ClassApiCountMethods
-        Il2cpp.ClassApi.MethodsLink = api.ClassApiMethodsLink
-        Il2cpp.ClassApi.FieldsLink = api.ClassApiFieldsLink
-        Il2cpp.ClassApi.FieldsStep = api.ClassApiFieldsStep
-        Il2cpp.ClassApi.CountFields = api.ClassApiCountFields
-
-        Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
-        Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
-        Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
-        Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
-
-        Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
-        Il2cpp.GlobalMetadataApi.typeDefinitionsOffset = api.typeDefinitionsOffset
-        Il2cpp.GlobalMetadataApi.stringOffset = api.stringOffset
-        Il2cpp.GlobalMetadataApi.version = version
-
-        Il2cpp.TypeApi.Type = api.TypeApiType
-    else
-        error('Not support this il2cpp version')
-    end 
 end
 
 Il2cppApi = {
@@ -133,7 +102,44 @@ Il2cppApi = {
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
         TypeApiType = platform and 0xA or 0x6,
-    }
+    },
+    ChooseIl2cppVersion = function(self, version)
+        version = (version <= 24 and version > 0) and 24 or ((version > 24 and version <= 27) and 27 or 0)
+        if (self[version]) then
+            local api = self[version]
+
+            Il2cpp.FieldApi.Offset = api.FieldApiOffset
+            Il2cpp.FieldApi.Type = api.FieldApiType
+            Il2cpp.FieldApi.ClassOffset = api.FieldApiClassOffset
+
+            Il2cpp.ClassApi.NameOffset = api.ClassApiNameOffset
+            Il2cpp.ClassApi.MethodsStep = api.ClassApiMethodsStep
+            Il2cpp.ClassApi.CountMethods = api.ClassApiCountMethods
+            Il2cpp.ClassApi.MethodsLink = api.ClassApiMethodsLink
+            Il2cpp.ClassApi.FieldsLink = api.ClassApiFieldsLink
+            Il2cpp.ClassApi.FieldsStep = api.ClassApiFieldsStep
+            Il2cpp.ClassApi.CountFields = api.ClassApiCountFields
+
+            Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
+            Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
+            Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
+            Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
+
+            Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
+            Il2cpp.GlobalMetadataApi.typeDefinitionsOffset = api.typeDefinitionsOffset
+            Il2cpp.GlobalMetadataApi.stringOffset = api.stringOffset
+            Il2cpp.GlobalMetadataApi.version = version
+
+            Il2cpp.TypeApi.Type = api.TypeApiType
+        else
+            error('Not support this il2cpp version')
+        end 
+    end
+}
+
+-- Memorizing Il2cpp Search Result
+Il2cppMemory = {
+    Methods = {}
 }
 
 Il2cpp = {
@@ -141,6 +147,16 @@ Il2cpp = {
     il2cppEnd = 0,
     globalMetadataStart = 0,
     globalMetadataEnd = 0,
+    --- Patch `Bytescodes` to `add`
+    ---
+    --- Example:
+    --- arm64: 
+    --- `mov w0,#0x1`
+    --- `ret`
+    ---
+    --- `Il2cpp.PatchesAddress(0x100, "\x20\x00\x80\x52\xc0\x03\x5f\xd6")`
+    ---@param add number
+    ---@param Bytescodes string
     PatchesAddress = function(add, Bytescodes)   
         local patch = {}
         for code in string.gmatch(Bytescodes, '.') do
@@ -152,15 +168,32 @@ Il2cpp = {
         end
         gg.setValues(patch)
     end,
+    --- Searches for a method, or rather information on the method, by name or by offset, you can also send an address in memory to it.
+    --- 
+    --- Return table with information about methods.
+    ---@param searchArgs table
+    ---@return table
     FindMethods = function(searchArgs)
+        local MethodsMemory = Il2cppMemory.Methods
         for i = 1, #searchArgs do
-            searchArgs[i] = Il2cpp.MethodsApi.Find(Il2cpp.MethodsApi, searchArgs[i])
+            if MethodsMemory[searchArgs[i]] then
+                searchArgs[i] = MethodsMemory[searchArgs[i]]
+            else
+                local searchResult = Il2cpp.MethodsApi:Find(searchArgs[i])
+                MethodsMemory[searchArgs[i]] = searchResult
+                searchArgs[i] = searchResult
+            end
         end
         return searchArgs
     end,
+    --- Searches for a class, by name, or by address in memory.
+    --- 
+    --- Return table with information about class.
+    ---@param searchArgs table
+    ---@return table
     FindClass = function(searchArgs)
-        for i = 1, #searchArgs do
-            searchArgs[i] = Il2cpp.ClassApi.Find(Il2cpp.ClassApi, searchArgs[i])
+        for i = 1, #searchArgs do            
+            searchArgs[i] = Il2cpp.ClassApi:Find(searchArgs[i])
         end
         return searchArgs
     end,
@@ -427,18 +460,20 @@ Il2cpp = {
             if (#ResultTable == 0) then error('nothing was found for this address 0x' .. string.format("%X", ClassAddress)) end
             return ResultTable
         end,
+        FindArgsCheck = {
+            ['number'] = function (self, _class)
+                return Protect:Call(self.FindClassWithAddressInMemory, self, _class)
+            end,
+            ['string'] = function (self, _class)
+                return Protect:Call(self.FindClassWithName, self, _class)
+            end,
+            ['default'] = function()
+                return {Error = 'Invalid search criteria'}
+            end
+        },
         Find = function (self, class)
-            local ClassInfo = switch(type(class.Class), {
-                ['number'] = function (self, _class)
-                    return Protect:Call(self.FindClassWithAddressInMemory, self, _class)
-                end,
-                ['string'] = function (self, _class)
-                    return Protect:Call(self.FindClassWithName, self, _class)
-                end,
-            }, {Error = 'Invalid search criteria'},self, class.Class)
-            if (#ClassInfo == 0) then
-                ClassInfo = {ClassInfo}
-            else
+            local ClassInfo = (self.FindArgsCheck[type(class.Class)] or self.FindArgsCheck['default'])(self, class.Class)
+            if #ClassInfo ~= 0 then
                 for k = 1, #ClassInfo do
                     ClassInfo[k] = self:UnpackClassInfo(ClassInfo[k], {FieldsDump = class.FieldsDump, MethodsDump = class.MethodsDump})
                 end
@@ -568,22 +603,24 @@ Il2cpp = {
                 ClassName = MethodInfo.ClassName,
             }
         end,
+        FindArgsCheck = {
+            ['number'] = function(self, method)
+                if (method > Il2cpp.il2cppStart and method < Il2cpp.il2cppEnd) then
+                    return Protect:Call(self.FindMethodWithAddressInMemory, self, method)
+                else
+                    return Protect:Call(self.FindMethodWithOffset, self, method)
+                end
+            end,
+            ['string'] = function(self, method)
+                return Protect:Call(self.FindMethodWithName, self, method)
+            end,
+            ['default'] = function()
+                return {Error = 'Invalid search criteria'}
+            end
+        },
         Find = function (self, method)
-            local _MethodsInfo = switch(type(method), {
-                ['number'] = function (self, method)
-                    if (method > Il2cpp.il2cppStart and method < Il2cpp.il2cppEnd) then
-                        return Protect:Call(self.FindMethodWithAddressInMemory, self, method)
-                    else
-                        return Protect:Call(self.FindMethodWithOffset, self, method)
-                    end
-                end,
-                ['string'] = function (self, method)
-                    return Protect:Call(self.FindMethodWithName, self, method)
-                end,
-            }, 'Invalid search criteria',self, method)
-            if (#_MethodsInfo == 0) then
-                _MethodsInfo = {_MethodsInfo}
-            else
+            local _MethodsInfo = (self.FindArgsCheck[type(method)] or self.FindArgsCheck['default'])(self, method)
+            if (#_MethodsInfo ~= 0) then
                 local MethodsInfo = {}
                 for k = 1, #_MethodsInfo do
                     local MethodInfo
@@ -593,6 +630,7 @@ Il2cpp = {
                 MethodsInfo = gg.getValues(MethodsInfo)
                 self:DecodeMethodsInfo(_MethodsInfo, MethodsInfo)
             end
+
             return _MethodsInfo
         end
     }
@@ -662,9 +700,13 @@ Il2cpp = setmetatable(Il2cpp, {
         end
 
         if args[3] then
-            ChooseIl2cppVersion(args[3])
+            Il2cppApi:ChooseIl2cppVersion(args[3])
         else
-            ChooseIl2cppVersion(gg.getValues({{address = self.globalMetadataStart + 0x4, flags = gg.TYPE_DWORD}})[1].value)
+            Il2cppApi:ChooseIl2cppVersion(gg.getValues({{address = self.globalMetadataStart + 0x4, flags = gg.TYPE_DWORD}})[1].value)
         end
+
+        Il2cppMemory.Methods = {}
     end
 })
+
+return Il2cpp
