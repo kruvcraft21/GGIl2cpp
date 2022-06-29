@@ -1,5 +1,9 @@
 local platform = gg.getTargetInfo().x64
 
+---@class ClassInfoRaw
+---@field ClassName string | nil
+---@field ClassInfoAddress number
+
 function switch(check, tableForChoose, e, ...)
     local args = {...}
     return ({
@@ -74,6 +78,9 @@ Il2cppApi = {
         ClassApiFieldsLink = platform and 0x80 or 0x40,
         ClassApiFieldsStep = platform and 0x20 or 0x14,
         ClassApiCountFields = platform and 0x11c or 0xA8,
+        ClassApiParetOffset = platform and 0x58 or 0x2C,
+        ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
+        ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -94,6 +101,9 @@ Il2cppApi = {
         ClassApiFieldsLink = platform and 0x80 or 0x40,
         ClassApiFieldsStep = platform and 0x20 or 0x14,
         ClassApiCountFields = platform and 0x120 or 0xA8,
+        ClassApiParetOffset = platform and 0x58 or 0x2C,
+        ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
+        ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -119,6 +129,9 @@ Il2cppApi = {
             Il2cpp.ClassApi.FieldsLink = api.ClassApiFieldsLink
             Il2cpp.ClassApi.FieldsStep = api.ClassApiFieldsStep
             Il2cpp.ClassApi.CountFields = api.ClassApiCountFields
+            Il2cpp.ClassApi.ParetnOffset = api.ClassApiParetOffset
+            Il2cpp.ClassApi.NameSpaceOffset = api.ClassApiNameSpaceOffset
+            Il2cpp.ClassApi.StaticFieldDataOffset = api.ClassApiStaticFieldDataOffset
 
             Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
             Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
@@ -139,9 +152,11 @@ Il2cppApi = {
 
 -- Memorizing Il2cpp Search Result
 Il2cppMemory = {
-    Methods = {}
+    Methods = {},
+    Classes = {}
 }
 
+---@class Il2cpp
 Il2cpp = {
     il2cppStart = 0,
     il2cppEnd = 0,
@@ -176,11 +191,12 @@ Il2cpp = {
     FindMethods = function(searchArgs)
         local MethodsMemory = Il2cppMemory.Methods
         for i = 1, #searchArgs do
-            if MethodsMemory[searchArgs[i]] then
-                searchArgs[i] = MethodsMemory[searchArgs[i]]
+            local searchArg = searchArgs[i]
+            if MethodsMemory[searchArg] then
+                searchArgs[i] = MethodsMemory[searchArg]
             else
-                local searchResult = Il2cpp.MethodsApi:Find(searchArgs[i])
-                MethodsMemory[searchArgs[i]] = searchResult
+                local searchResult = Il2cpp.MethodsApi:Find(searchArg)
+                MethodsMemory[searchArg] = searchResult
                 searchArgs[i] = searchResult
             end
         end
@@ -192,8 +208,59 @@ Il2cpp = {
     ---@param searchArgs table
     ---@return table
     FindClass = function(searchArgs)
-        for i = 1, #searchArgs do            
-            searchArgs[i] = Il2cpp.ClassApi:Find(searchArgs[i])
+        local ClassesMemory = Il2cppMemory.Classes
+        for i = 1, #searchArgs do
+            local searchArg = searchArgs[i]
+            if not ClassesMemory[searchArg.Class] then
+                local searchResult = Il2cpp.ClassApi:Find(searchArg)
+                ClassesMemory[searchArg] = {
+                    SearchResult = searchResult,
+                    Config = {
+                        FieldsDump = searchArg.FieldsDump,
+                        MethodsDump = searchArg.MethodsDump
+                    }
+                }
+                searchArgs[i] = searchResult
+            elseif not ((searchArg.FieldsDump == ClassesMemory[searchArg.Class].Config.FieldsDump) and (searchArg.MethodsDump == ClassesMemory[searchArg.Class].Config.MethodsDump)) then
+                local searchResult = Il2cpp.ClassApi:Find(searchArg)
+                ClassesMemory[searchArg.Class] = {
+                    SearchResult = searchResult,
+                    Config = {
+                        FieldsDump = searchArg.FieldsDump,
+                        MethodsDump = searchArg.MethodsDump
+                    }
+                }
+                searchArgs[i] = searchResult
+            else
+                searchArgs[i] = ClassesMemory[searchArg.Class].SearchResult
+            end      
+        end
+        return searchArgs
+    end,
+    --- Searches for an object by name or by class address, in memory.
+    --- 
+    --- In some cases, the function may return an incorrect result for certain classes. For example, sometimes the garbage collector may not have time to remove an object from memory and then a `fake object` will appear or for a turnover, the object may still be `not implemented` or `not created`.
+    ---
+    --- Returns a table of objects.
+    ---@param searchArgs table
+    ---@return table
+    FindObject = function(searchArgs)
+        local ClassesMemory = Il2cppMemory.Classes
+        for i = 1, #searchArgs do
+            local searchArg = searchArgs[i]
+            if not ClassesMemory[searchArg.Class] then
+                local searchResult = Il2cpp.ClassApi:Find({Class = searchArg})
+                ClassesMemory[searchArg] = {
+                    SearchResult = searchResult,
+                    Config = {
+                        FieldsDump = false,
+                        MethodsDump = false
+                    }
+                }
+                searchArgs[i] = Il2cpp.ObjectApi:Find(searchResult)
+            else
+                searchArgs[i] = Il2cpp.ObjectApi:Find(ClassesMemory[searchArg].SearchResult)
+            end
         end
         return searchArgs
     end,
@@ -234,21 +301,25 @@ Il2cpp = {
         return platform and val or val & 0xFFFFFFFF
     end,
     MainType = platform and gg.TYPE_QWORD or gg.TYPE_DWORD,
+    ---@class GlobalMetadataApi
     GlobalMetadataApi = {
         typeDefinitionsSize = 0x88,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
         version = 27,
+        ---@param self GlobalMetadataApi
         GetStringFromIndex = function(self, index)
             local stringDefinitions = Il2cpp.globalMetadataStart + gg.getValues({{address = Il2cpp.globalMetadataStart + self.stringOffset, flags = gg.TYPE_DWORD}})[1].value
             return Il2cpp.Utf8ToString(stringDefinitions + index)
         end,
+        ---@param self GlobalMetadataApi
         GetClassName = function(self, index)
             local typeDefinitions = Il2cpp.globalMetadataStart + gg.getValues({{address = Il2cpp.globalMetadataStart + self.typeDefinitionsOffset, flags = gg.TYPE_DWORD}})[1].value
             local typeDefinition = gg.getValues({{address = self.version < 27 and (self.typeDefinitionsSize * index) + typeDefinitions or Il2cpp.FixValue(index), flags = gg.TYPE_DWORD}})[1].value
             return self:GetStringFromIndex(typeDefinition)
         end
     },
+    ---@class TypeApi
     TypeApi = {
         Type = platform and 0xA or 0x6,
         tableTypes = {
@@ -294,6 +365,7 @@ Il2cpp = {
             return switch(typeIndex, self.tableTypes, CheckSupportType, index, typeIndex)
         end
     },
+    ---@class FieldApi
     FieldApi = {
         Offset = platform and 0x18 or 0xC,
         Type = platform and 0x8 or 0x4,
@@ -350,6 +422,7 @@ Il2cpp = {
             end
         end
     },
+    ---@class ClassApi
     ClassApi = {
         NameOffset = platform and 0x10 or 0x8,
         MethodsStep = platform and 3 or 2,
@@ -358,6 +431,9 @@ Il2cpp = {
         FieldsLink = platform and 0x80 or 0x40,
         FieldsStep = platform and 0x20 or 0x14,
         CountFields = platform and 0x120 or 0xA8,
+        ParetnOffset = platform and 0x58 or 0x2C,
+        NameSpaceOffset = platform and 0x18 or 0xC,
+        StaticFieldDataOffset = platform and 0xB8 or 0x5C,
         GetClassName = function(self, ClassAddress)
             return Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{address = Il2cpp.FixValue(ClassAddress) + self.NameOffset,flags = Il2cpp.MainType}})[1].value))
         end,
@@ -397,8 +473,12 @@ Il2cpp = {
             Il2cpp.FieldApi:DecodeFieldsInfo(_FieldsInfo, FieldsInfo)
             return _FieldsInfo
         end,
+        ---@param self ClassApi
+        ---@param ClassInfo ClassInfoRaw
+        ---@param Config table
+        ---@return table
         UnpackClassInfo = function(self, ClassInfo, Config)
-            local _ClassInfo = gg.getValues({
+            local _ClassInfo = gg.getValues({ 
                 { -- Class Name
                     address = ClassInfo.ClassInfoAddress + self.NameOffset,
                     flags = Il2cpp.MainType
@@ -418,13 +498,28 @@ Il2cpp = {
                 { -- Link as Fields
                     address = ClassInfo.ClassInfoAddress + self.FieldsLink,
                     flags = Il2cpp.MainType
+                },
+                { -- Link as Parent Class
+                    address = ClassInfo.ClassInfoAddress + self.ParetnOffset,
+                    flags = Il2cpp.MainType
+                },
+                { -- Class NameSpace
+                    address = ClassInfo.ClassInfoAddress + self.NameSpaceOffset,
+                    flags = Il2cpp.MainType
+                },
+                { -- Class Static Field Data
+                    address = ClassInfo.ClassInfoAddress + self.StaticFieldDataOffset,
+                    flags = Il2cpp.MainType
                 }
             })
             return {
-                ClassName = ClassInfo.Class or Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[1].value)),
+                ClassName = ClassInfo.ClassName or Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[1].value)),
                 ClassAddress = string.format('%X', Il2cpp.FixValue(ClassInfo.ClassInfoAddress)),
-                Methods = (_ClassInfo[2].value > 0 and Config.MethodsDump) and self:GetClassMethods(_ClassInfo[4].value, _ClassInfo[2].value, ClassInfo.Class) or nil,
-                Fields = (_ClassInfo[3].value > 0 and Config.FieldsDump) and self:GetClassFields(_ClassInfo[5].value, _ClassInfo[3].value, ClassInfo.Class) or nil
+                Methods = (_ClassInfo[2].value > 0 and Config.MethodsDump) and self:GetClassMethods(_ClassInfo[4].value, _ClassInfo[2].value, ClassInfo.ClassName) or nil,
+                Fields = (_ClassInfo[3].value > 0 and Config.FieldsDump) and self:GetClassFields(_ClassInfo[5].value, _ClassInfo[3].value, ClassInfo.ClassName) or nil,
+                Parent = _ClassInfo[6].value ~= 0 and {ClassAddress = string.format('%X', Il2cpp.FixValue(_ClassInfo[6].value))} or nil,
+                ClassNameSpace = Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[7].value)),
+                StaticFieldData = _ClassInfo[8].value ~= 0 and Il2cpp.FixValue(_ClassInfo[8].value) or nil
             }
         end,
         FindClassWithName = function(self, ClassName)
@@ -435,16 +530,14 @@ Il2cpp = {
             gg.searchPointer(0)
             local ClassNamePoint, ResultTable = gg.getResults(gg.getResultsCount()), {}
             gg.clearResults()
-            if (#ClassNamePoint > 0) then
-                for k,v in ipairs(ClassNamePoint) do
-                    local MainClass = gg.getValues({{address = v.address - self.NameOffset,flags = v.flags}})[1]
-                    local assembly = Il2cpp.FixValue(MainClass.value)
-                    if (Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{address = assembly,flags = v.flags}})[1].value)):find(".dll")) then 
-                        ResultTable[#ResultTable + 1] = {
-                            ClassInfoAddress = Il2cpp.FixValue(MainClass.address),
-                            ClassName = ClassName
-                        }
-                    end
+            for k,v in ipairs(ClassNamePoint) do
+                local MainClass = gg.getValues({{address = v.address - self.NameOffset,flags = v.flags}})[1]
+                local assembly = Il2cpp.FixValue(MainClass.value)
+                if (Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{address = assembly,flags = v.flags}})[1].value)):find(".dll")) then 
+                    ResultTable[#ResultTable + 1] = {
+                        ClassInfoAddress = Il2cpp.FixValue(MainClass.address),
+                        ClassName = ClassName
+                    }
                 end
             end
             if (#ResultTable == 0) then error('the "' .. ClassName .. '" function pointer was not found') end
@@ -471,6 +564,7 @@ Il2cpp = {
                 return {Error = 'Invalid search criteria'}
             end
         },
+        ---@param self ClassApi
         Find = function (self, class)
             local ClassInfo = (self.FindArgsCheck[type(class.Class)] or self.FindArgsCheck['default'])(self, class.Class)
             if #ClassInfo ~= 0 then
@@ -481,6 +575,7 @@ Il2cpp = {
             return ClassInfo
         end
     },
+    ---@class MethodsApi
     MethodsApi = {
         ClassOffset = platform and 0x18 or 0xC,
         NameOffset = platform and 0x10 or 0x8,
@@ -492,7 +587,7 @@ Il2cpp = {
             gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_OTHER)
             gg.searchNumber('h ' .. name, gg.TYPE_BYTE, false, gg.SIGN_EQUAL, Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
             if gg.getResultsCount() == 0 then error('the "' .. MethodName .. '" function was not found') end
-            gg.searchNumber('h ' .. string.sub(name,4,5)) 
+            gg.refineNumber('h ' .. string.sub(name,4,5)) 
             local r = gg.getResults(gg.getResultsCount())
             gg.clearResults()
             for j = 1, #r do
@@ -633,10 +728,55 @@ Il2cpp = {
 
             return _MethodsInfo
         end
+    },
+    ---@class ObjectApi
+    ObjectApi = {
+        ---@param Objects table
+        FilterObjects = function(Objects)
+            local FilterObjects = {}
+            for k, v in ipairs(gg.getValuesRange(Objects)) do
+                FilterObjects[#FilterObjects + 1] = v == 'A' and Objects[k] or nil
+            end
+            Objects = FilterObjects
+            gg.clearResults()
+            gg.loadResults(Objects)
+            gg.searchPointer(0)
+            local r, FilterObjects = gg.getResults(gg.getResultsCount()), {}
+            gg.clearResults()
+            for k,v in ipairs(gg.getValuesRange(r)) do
+                FilterObjects[#FilterObjects + 1] = v == 'A' and {address = r[k].value, flags = r[k].flags} or nil
+            end
+            gg.loadResults(FilterObjects)
+            Objects = gg.getResults(gg.getResultsCount())
+            gg.clearResults()
+            return Objects
+        end,
+        ---@param self ObjectApi
+        ---@param ClassAddress number
+        FindObject = function(self, ClassAddress)
+            local FindsResult = {}
+            gg.clearResults()
+            gg.loadResults({{address = ClassAddress, flags = Il2cpp.MainType}})
+            gg.searchPointer(0)
+            FindsResult = gg.getResults(gg.getResultsCount())
+            gg.clearResults()
+            return self.FilterObjects(FindsResult)
+        end,
+        ---@param self ObjectApi
+        ---@param ClassesInfo table
+        Find = function(self, ClassesInfo)
+            local Objects = {}
+            for j = 1, #ClassesInfo do
+                local FindResult = self:FindObject(tonumber(ClassesInfo[j].ClassAddress, 16))
+                table.move(FindResult, 1, #FindResult, #Objects + 1, Objects)
+            end
+            return Objects
+        end
     }
 }
 
 Il2cpp = setmetatable(Il2cpp, {
+    ---@param self Il2cpp
     __call = function(self, ...)
         
         local function FindGlobalMetaData()
@@ -705,7 +845,10 @@ Il2cpp = setmetatable(Il2cpp, {
             Il2cppApi:ChooseIl2cppVersion(gg.getValues({{address = self.globalMetadataStart + 0x4, flags = gg.TYPE_DWORD}})[1].value)
         end
 
-        Il2cppMemory.Methods = {}
+        Il2cppMemory = {
+            Methods = {},
+            Classes = {}
+        }
     end
 })
 

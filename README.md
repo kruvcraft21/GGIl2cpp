@@ -15,6 +15,7 @@ Il2cpp()
 Il2cpp.FindMethods()
 Il2cpp.FindClass()
 Il2cpp.PatchesAddress()
+Il2cpp.FindObject()
 addresspath()
 ```
 
@@ -23,6 +24,7 @@ addresspath()
 * "Il2cpp.FindMethods()" - Searches for a method, or rather information on the method, by name or by offset, you can also send an address in memory to it.
 * "Il2cpp.FindClass()" - Searches for a class, by name, or by address in memory.
 * "Il2cpp.PatchesAddress()" - Patch `Bytescodes` to `add`
+* "Il2cpp.FindObject()" - Searches for an object by name or by class address, in memory. In some cases, the function may return an incorrect result for certain classes. For example, sometimes the garbage collector may not have time to remove an object from memory and then a `fake object` will appear or for a turnover, the object may still be `not implemented` or `not created`.
 * "addresspath()" - is a function that was created to patch the desired address. The first argument should be an offset, and the subsequent ones should be constructs.
 
 ## How to use
@@ -99,6 +101,8 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
         [1] = {
             ['ClassAddress'] = '',-- some number in hex
             ['ClassName'] = 'MyClass',
+            ['ClassNameSpace'] = '',
+            ['StaticFieldData'] = , -- some number
             ['Fields'] = {
                 [ 1] = { -- table(19d60b2)
                     ['ClassName'] = 'MyClass',
@@ -257,6 +261,6 @@ end
 
 ## Memorizing Il2cpp Search Result
 
-`Memorizing Il2cpp Search Result` is a special simple system to speed up the module. It remembers the search results, so far it only works with `Il2cpp.FindMethods`, since for `Il2cpp.FindClass` it is necessary to do a lot of checks, which may lead to the module not being effective. But in the future, this system will be improved to work with all types of search.
+`Memorizing Il2cpp Search Result` is a special simple system to speed up the module. It remembers the search results.
 
 It is worth noting that any call to the `Il2cpp()` function will reset this system.
