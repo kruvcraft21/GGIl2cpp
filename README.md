@@ -8,7 +8,7 @@ The module has support for the [Lua](https://marketplace.visualstudio.com/items?
 
 ## About Module
 
-This Module has 5 functions 
+This Module has 6 functions 
 
 ```lua
 Il2cpp()
