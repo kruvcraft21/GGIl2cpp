@@ -3,7 +3,7 @@
 ## About script
 This script is only needed to make it easier to work with Il2cpp. This script works through the program [GameGuardian](https://gameguardian.net). With the help of the module, you can get information about the method or class that interests you. 
 
-The module has support for the [Lua](https://marketplace.visualstudio.com/items?itemName=yinfei.luahelper) plugin for `VS Code`, that is, some functions have a description that this plugin can display.
+The module has support for the [Lua](https://marketplace.visualstudio.com/items?itemName=yinfei.luahelper) plugin for [VS Code](https://code.visualstudio.com/), that is, some functions have a description that this plugin can display.
 
 
 ## About Module
