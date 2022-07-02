@@ -168,7 +168,7 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
 
 local Method1 = Il2cpp.FindMethods({'Method1'})[1]
 for k,v in ipairs(Method1) do
-    if v.Class == 'MyClass' then 
+    if v.ClassName == 'MyClass' then 
         addresspath(tonumber(v.AddressInMemory,16),"\x20\x00\x80\x52","\xc0\x03\x5f\xd6")
     end
 end
@@ -186,7 +186,7 @@ arm64:
 
 local Method1 = Il2cpp.FindMethods({'Method1'})[1]
 for k,v in ipairs(Method1) do
-    if v.Class == 'MyClass' then 
+    if v.ClassName == 'MyClass' then 
         Il2cpp.PatchesAddress(tonumber(v.AddressInMemory,16),"\x20\x00\x80\x52\xc0\x03\x5f\xd6")
     end
 end
