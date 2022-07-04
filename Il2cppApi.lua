@@ -4,6 +4,19 @@ local platform = gg.getTargetInfo().x64
 ---@field ClassName string | nil
 ---@field ClassInfoAddress number
 
+---@class ClassInfo
+---@field ClassName string
+---@field ClassAddress string
+---@field Methods MethodInfo[] | nil
+---@field Fields FieldInfo[] | nil
+---@field Parent table | nil
+---@field ClassNameSpace string
+---@field StaticFieldData number | nil
+
+---@class ParentClassInfo
+---@field ClassName string
+---@field ClassAddress string
+
 ---@class FieldInfoRaw
 ---@field FieldInfoAddress number
 ---@field ClassName string | nil
@@ -41,18 +54,32 @@ local platform = gg.getTargetInfo().x64
 ---@field ReturnType number
 
 ---@class FieldInfo
----@field ClassName string | nil
----@field ClassAddress string | nil
----@field FieldName string | nil
----@field Offset string | nil
+---@field ClassName string 
+---@field ClassAddress string 
+---@field FieldName string
+---@field Offset string
 ---@field IsStatic boolean
----@field Type string | nil
+---@field Type string
 
 ---@class MethodInfoRaw
 ---@field MethodName string | nil
 ---@field Offset number | nil
 ---@field MethodInfoAddress number
 ---@field ClassName string | nil
+---@field MethodAddress number
+
+---@class ErrorSearch
+---@field Error string
+
+---@class MethodInfo : MethodInfoRaw
+---@field MethodName string
+---@field Offset string
+---@field AddressInMemory string
+---@field MethodInfoAddress number
+---@field ClassName string
+---@field ClassAddress string
+---@field ParamCount number
+---@field ReturnType string
 
 ---@class Il2cppApi
 ---@field FieldApiOffset number
@@ -65,7 +92,7 @@ local platform = gg.getTargetInfo().x64
 ---@field ClassApiFieldsLink number
 ---@field ClassApiFieldsStep number
 ---@field ClassApiCountFields number
----@field ClassApiParetOffset number
+---@field ClassApiParentOffset number
 ---@field ClassApiNameSpaceOffset number
 ---@field ClassApiStaticFieldDataOffset number
 ---@field MethodsApiClassOffset number
@@ -81,24 +108,6 @@ local platform = gg.getTargetInfo().x64
 ---@field Class number | string @Class Name or Address Class
 ---@field FieldsDump boolean
 ---@field MethodsDump boolean
-
-function switch(check, tableForChoose, e, ...)
-    local params = {...}
-    return ({
-        xpcall(
-            tableForChoose[check],
-            function ()
-                return tableForChoose[check] or (
-                    function()
-                        if type(e) ~= 'function' then return e end
-                        return e(table.unpack(params))
-                    end
-                )()
-            end,
-            ...
-        )
-    })[2]
-end
 
 Protect = {
     ErrorHandler = function(err)
@@ -134,14 +143,7 @@ function addresspath(StartAddress, ...)
 end
 
 function GetTypeClassName(index)
-    return Il2cpp.GlobalMetadataApi:GetClassName(index)
-end
-
-function CheckSupportType(index, typeIndex)
-    if not (Il2cpp.TypeApi.tableTypes[typeIndex]) then
-        return "not support type -> 0x" .. string.format('%X', typeIndex)
-    end
-    return Il2cpp.GlobalMetadataApi:GetClassName(index)
+    return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
 end
 
 ---@type Il2cppApi[]
@@ -157,7 +159,7 @@ Il2cppApi = {
         ClassApiFieldsLink = platform and 0x80 or 0x40,
         ClassApiFieldsStep = platform and 0x20 or 0x14,
         ClassApiCountFields = platform and 0x11c or 0xA8,
-        ClassApiParetOffset = platform and 0x58 or 0x2C,
+        ClassApiParentOffset = platform and 0x58 or 0x2C,
         ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
@@ -180,7 +182,7 @@ Il2cppApi = {
         ClassApiFieldsLink = platform and 0x80 or 0x40,
         ClassApiFieldsStep = platform and 0x20 or 0x14,
         ClassApiCountFields = platform and 0x120 or 0xA8,
-        ClassApiParetOffset = platform and 0x58 or 0x2C,
+        ClassApiParentOffset = platform and 0x58 or 0x2C,
         ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
@@ -203,7 +205,7 @@ Il2cppApi = {
         ClassApiFieldsLink = platform and 0x80 or 0x40,
         ClassApiFieldsStep = platform and 0x20 or 0x14,
         ClassApiCountFields = platform and 0x120 or 0xA8,
-        ClassApiParetOffset = platform and 0x58 or 0x2C,
+        ClassApiParentOffset = platform and 0x58 or 0x2C,
         ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         MethodsApiClassOffset = platform and 0x20 or 0x10,
@@ -241,7 +243,7 @@ Il2cppApi = {
             Il2cpp.ClassApi.FieldsLink = api.ClassApiFieldsLink
             Il2cpp.ClassApi.FieldsStep = api.ClassApiFieldsStep
             Il2cpp.ClassApi.CountFields = api.ClassApiCountFields
-            Il2cpp.ClassApi.ParentOffset = api.ClassApiParetOffset
+            Il2cpp.ClassApi.ParentOffset = api.ClassApiParentOffset
             Il2cpp.ClassApi.NameSpaceOffset = api.ClassApiNameSpaceOffset
             Il2cpp.ClassApi.StaticFieldDataOffset = api.ClassApiStaticFieldDataOffset
 
@@ -305,6 +307,7 @@ Il2cpp = {
     FindMethods = function(searchParams)
         local MethodsMemory = Il2cppMemory.Methods
         for i = 1, #searchParams do
+            ---@type number | string
             local searchParam = searchParams[i]
             if MethodsMemory[searchParam] then
                 searchParams[i] = MethodsMemory[searchParam]
@@ -324,10 +327,11 @@ Il2cpp = {
     FindClass = function(searchParams)
         local ClassesMemory = Il2cppMemory.Classes
         for i = 1, #searchParams do
+            ---@type ClassConfig
             local searchParam = searchParams[i]
             if not ClassesMemory[searchParam.Class] then
                 local searchResult = Il2cpp.ClassApi:Find(searchParam)
-                ClassesMemory[searchParam] = {
+                ClassesMemory[searchParam.Class] = {
                     SearchResult = searchResult,
                     Config = {
                         FieldsDump = searchParam.FieldsDump,
@@ -379,6 +383,7 @@ Il2cpp = {
         return searchParams
     end,
     ---@param Address number
+    ---@return string
     Utf8ToString = function(Address)
         local bytes, char = {}, {address = Address, flags = gg.TYPE_BYTE}
         while gg.getValues({char})[1].value > 0 do
@@ -419,12 +424,13 @@ Il2cpp = {
     ---@type GlobalMetadataApi
     GlobalMetadataApi = {
         ---@param self GlobalMetadataApi
+        ---@param index number
         GetStringFromIndex = function(self, index)
             local stringDefinitions = Il2cpp.globalMetadataStart + gg.getValues({{address = Il2cpp.globalMetadataStart + self.stringOffset, flags = gg.TYPE_DWORD}})[1].value
             return Il2cpp.Utf8ToString(stringDefinitions + index)
         end,
         ---@param self GlobalMetadataApi
-        GetClassName = function(self, index)
+        GetClassNameFromIndex = function(self, index)
             if (self.version < 27) then
                 local typeDefinitions = Il2cpp.globalMetadataStart + gg.getValues({{address = Il2cpp.globalMetadataStart + self.typeDefinitionsOffset, flags = gg.TYPE_DWORD}})[1].value
                 index = (self.typeDefinitionsSize * index) + typeDefinitions
@@ -476,11 +482,20 @@ Il2cpp = {
                     index = gg.getValues({{address = Il2cpp.FixValue(index), flags = Il2cpp.MainType}})[1].value
                 end
                 index = gg.getValues({{address = Il2cpp.FixValue(index), flags = Il2cpp.MainType}})[1].value
-                return Il2cpp.GlobalMetadataApi:GetClassName(index)
+                return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
             end
         },
+        ---@param self TypeApi
+        ---@param typeIndex number @number for tableTypes
+        ---@param index number @for an api that is higher than 24, this can be a reference to the index
+        ---@return string
         GetTypeName = function(self, typeIndex, index)
-            return switch(typeIndex, self.tableTypes, CheckSupportType, index, typeIndex)
+            ---@type string | function
+            local typeName = self.tableTypes[typeIndex] or "not support type -> 0x" .. string.format('%X', typeIndex)
+            if (type(typeName) == 'function') then
+                typeName = typeName(index)
+            end
+            return typeName
         end
     },
     ---@type FieldApi
@@ -548,6 +563,10 @@ Il2cpp = {
         GetClassName = function(self, ClassAddress)
             return Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{address = Il2cpp.FixValue(ClassAddress) + self.NameOffset,flags = Il2cpp.MainType}})[1].value))
         end,
+        ---@param self ClassApi
+        ---@param MethodsLink number
+        ---@param Count number
+        ---@param ClassName string | nil
         GetClassMethods = function (self, MethodsLink, Count, ClassName)
             local MethodsInfo, _MethodsInfo = {}, {}
             for i = 0, Count - 1 do
@@ -666,9 +685,13 @@ Il2cpp = {
             return ResultTable
         end,
         FindParamsCheck = {
+            ---@param self ClassApi
+            ---@param _class number @Class Address In Memory
             ['number'] = function (self, _class)
                 return Protect:Call(self.FindClassWithAddressInMemory, self, _class)
             end,
+            ---@param self ClassApi
+            ---@param _class string @Class Name
             ['string'] = function (self, _class)
                 return Protect:Call(self.FindClassWithName, self, _class)
             end,
@@ -677,6 +700,8 @@ Il2cpp = {
             end
         },
         ---@param self ClassApi
+        ---@param class ClassConfig
+        ---@return ClassInfo[] | ErrorSearch
         Find = function (self, class)
             local ClassInfo = (self.FindParamsCheck[type(class.Class)] or self.FindParamsCheck['default'])(self, class.Class)
             if #ClassInfo ~= 0 then
@@ -689,6 +714,9 @@ Il2cpp = {
     },
     ---@type MethodsApi
     MethodsApi = {
+        ---@param self MethodsApi
+        ---@param MethodName string
+        ---@return MethodInfoRaw[]
         FindMethodWithName = function(self, MethodName)
             local FinalMethods, name = {}, "00 " .. MethodName:gsub('.', function (c) return string.format('%02X', string.byte(c)) .. " " end) .. "00"
             gg.clearResults()
@@ -722,12 +750,19 @@ Il2cpp = {
             if (#FinalMethods == 0) then error('the "' .. MethodName .. '" function pointer was not found') end
             return FinalMethods
         end,
+        ---@param self MethodsApi
+        ---@param MethodOffset number
+        ---@return MethodInfoRaw[]
         FindMethodWithOffset = function (self, MethodOffset)
             local MethodsInfo = self.FindMethodWithAddressInMemory(Il2cpp.il2cppStart + MethodOffset, MethodOffset)
             if (#MethodsInfo == 0) then error('nothing was found for this offset 0x' .. string.format("%X", MethodOffset)) end
             return MethodsInfo
         end,
-        FindMethodWithAddressInMemory = function (MethodAddress, MethodOffset)
+        ---@param self MethodsApi
+        ---@param MethodAddress number
+        ---@param MethodOffset number | nil
+        ---@return MethodInfoRaw[]
+        FindMethodWithAddressInMemory = function (self, MethodAddress, MethodOffset)
             local RawMethodsInfo = {} -- the same as MethodsInfo
             gg.clearResults()
             gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_OTHER)
@@ -749,6 +784,8 @@ Il2cpp = {
             if (#RawMethodsInfo == 0 and MethodOffset == nil) then error('nothing was found for this address 0x' .. string.format("%X", MethodAddress)) end
             return RawMethodsInfo
         end,
+        ---@param self MethodsApi
+        ---@param _MethodsInfo MethodInfo[]
         DecodeMethodsInfo = function(self, _MethodsInfo, MethodsInfo)
             for i = 1, #_MethodsInfo do
                 local index = (i - 1) * 5
@@ -810,6 +847,7 @@ Il2cpp = {
         end,
         FindParamsCheck = {
             ---@param self MethodsApi
+            ---@param method number
             ['number'] = function(self, method)
                 if (method > Il2cpp.il2cppStart and method < Il2cpp.il2cppEnd) then
                     return Protect:Call(self.FindMethodWithAddressInMemory, self, method)
@@ -817,6 +855,8 @@ Il2cpp = {
                     return Protect:Call(self.FindMethodWithOffset, self, method)
                 end
             end,
+            ---@param self MethodsApi
+            ---@param method string
             ['string'] = function(self, method)
                 return Protect:Call(self.FindMethodWithName, self, method)
             end,
@@ -826,9 +866,11 @@ Il2cpp = {
         },
         ---@param self MethodsApi
         ---@param method number | string
+        ---@return MethodInfo[] | ErrorSearch
         Find = function (self, method)
+            ---@type MethodInfoRaw[] | ErrorSearch
             local _MethodsInfo = (self.FindParamsCheck[type(method)] or self.FindParamsCheck['default'])(self, method)
-            if (#_MethodsInfo ~= 0) then
+            if (#_MethodsInfo > 0) then
                 local MethodsInfo = {}
                 for k = 1, #_MethodsInfo do
                     local MethodInfo
