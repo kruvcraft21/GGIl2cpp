@@ -1,4 +1,4 @@
-# Tests GGIl2cpp
+# Snippet code GGIl2cpp
 
 All tests are carried out on the example of [1.apk](/test/1.apk). You can download it in the `test` folder
 
