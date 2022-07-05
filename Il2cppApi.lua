@@ -12,6 +12,7 @@ local platform = gg.getTargetInfo().x64
 ---@field Parent table | nil
 ---@field ClassNameSpace string
 ---@field StaticFieldData number | nil
+---@field GetFieldWithName fun(self : ClassInfo, name : string) : FieldInfo | nil
 
 ---@class ParentClassInfo
 ---@field ClassName string
@@ -46,6 +47,10 @@ local platform = gg.getTargetInfo().x64
 ---@field ParentOffset number
 ---@field NameSpaceOffset number
 ---@field StaticFieldDataOffset number
+
+---@class ClassesMemory
+---@field Config ClassConfig
+---@field SearchResult ClassInfo[]
 
 ---@class MethodsApi
 ---@field ClassOffset number
@@ -269,6 +274,47 @@ Il2cppApi = {
 Il2cppMemory = {
     Methods = {},
     Classes = {},
+    ---@param self Il2cppMemory
+    ---@param searchParam number | string
+    ---@return MethodInfo[] | nil | ErrorSearch
+    GetInformaionOfMethod = function (self, searchParam)
+        return self.Methods[searchParam]
+    end,
+    ---@param self Il2cppMemory
+    ---@param searchParam string | number
+    ---@param searchResult MethodInfo[] | ErrorSearch
+    SetInformaionOfMethod = function(self, searchParam, searchResult)
+        self.Methods[searchParam] = searchResult
+    end,
+    ---@param self Il2cppMemory
+    ---@param searchParam number | string
+    ---@return ClassesMemory | nil
+    GetInfoOfClass = function (self, searchParam)
+        return self.Classes[searchParam]
+    end,
+    ---@param self Il2cppMemory
+    ---@param searchParam ClassConfig
+    ---@return ClassInfo[] | nil | ErrorSearch
+    GetInformationOfClass = function(self, searchParam)
+        ---@type ClassesMemory | nil
+        local ClassMemory = self:GetInfoOfClass(searchParam.Class)
+        if not(ClassMemory and (ClassMemory.Config.FieldsDump == searchParam.FieldsDump and ClassMemory.Config.MethodsDump == searchParam.MethodsDump)) then
+            return nil
+        end
+        return ClassMemory.SearchResult
+    end,
+    ---@param self Il2cppMemory
+    ---@param searchParam ClassConfig
+    ---@param searchResult ClassInfo[] | ErrorSearch
+    SetInformaionOfClass = function(self, searchParam, searchResult)
+        self.Classes[searchParam.Class] = {
+            Config = {
+                FieldsDump = searchParam.FieldsDump and true or false,
+                MethodsDump = searchParam.MethodsDump and true or false
+            },
+            SearchResult = searchResult
+        }
+    end,
 }
 
 ---@class Il2cpp
@@ -302,20 +348,19 @@ Il2cpp = {
     --- 
     --- Return table with information about methods.
     ---@generic TypeForSearch : number | string
-    ---@param searchParams TypeForSearch[]
+    ---@param searchParams TypeForSearch[] @TypeForSearch = number | string
     ---@return table
     FindMethods = function(searchParams)
         local MethodsMemory = Il2cppMemory.Methods
         for i = 1, #searchParams do
             ---@type number | string
             local searchParam = searchParams[i]
-            if MethodsMemory[searchParam] then
-                searchParams[i] = MethodsMemory[searchParam]
-            else
-                local searchResult = Il2cpp.MethodsApi:Find(searchParam)
-                MethodsMemory[searchParam] = searchResult
-                searchParams[i] = searchResult
+            local searchResult = Il2cppMemory:GetInformaionOfMethod(searchParam)
+            if not searchResult then
+                searchResult = Il2cpp.MethodsApi:Find(searchParam)
+                Il2cppMemory:SetInformaionOfMethod(searchParam, searchResult)
             end
+            searchParams[i] = searchResult
         end
         return searchParams
     end,
@@ -328,30 +373,13 @@ Il2cpp = {
         local ClassesMemory = Il2cppMemory.Classes
         for i = 1, #searchParams do
             ---@type ClassConfig
-            local searchParam = searchParams[i]
-            if not ClassesMemory[searchParam.Class] then
-                local searchResult = Il2cpp.ClassApi:Find(searchParam)
-                ClassesMemory[searchParam.Class] = {
-                    SearchResult = searchResult,
-                    Config = {
-                        FieldsDump = searchParam.FieldsDump,
-                        MethodsDump = searchParam.MethodsDump
-                    }
-                }
-                searchParams[i] = searchResult
-            elseif not ((searchParam.FieldsDump == ClassesMemory[searchParam.Class].Config.FieldsDump) and (searchParam.MethodsDump == ClassesMemory[searchParam.Class].Config.MethodsDump)) then
-                local searchResult = Il2cpp.ClassApi:Find(searchParam)
-                ClassesMemory[searchParam.Class] = {
-                    SearchResult = searchResult,
-                    Config = {
-                        FieldsDump = searchParam.FieldsDump,
-                        MethodsDump = searchParam.MethodsDump
-                    }
-                }
-                searchParams[i] = searchResult
-            else
-                searchParams[i] = ClassesMemory[searchParam.Class].SearchResult
-            end      
+            local searchParam = searchParams[i]    
+            local searchResult = Il2cppMemory:GetInformationOfClass(searchParam)
+            if not searchResult then
+                searchResult = Il2cpp.ClassApi:Find(searchParam)
+                Il2cppMemory:SetInformaionOfClass(searchParam, searchResult)
+            end
+            searchParams[i] = searchResult
         end
         return searchParams
     end,
@@ -363,21 +391,18 @@ Il2cpp = {
     ---@param searchParams table
     ---@return table
     FindObject = function(searchParams)
+        
         local ClassesMemory = Il2cppMemory.Classes
         for i = 1, #searchParams do
             local searchParam = searchParams[i]
-            if not ClassesMemory[searchParam.Class] then
-                local searchResult = Il2cpp.ClassApi:Find({Class = searchParam})
-                ClassesMemory[searchParam] = {
-                    SearchResult = searchResult,
-                    Config = {
-                        FieldsDump = false,
-                        MethodsDump = false
-                    }
-                }
-                searchParams[i] = Il2cpp.ObjectApi:Find(searchResult)
+            local classesMemory = Il2cppMemory:GetInfoOfClass(searchParam)
+            if classesMemory then
+                searchParams[i] = Il2cpp.ObjectApi:Find(classesMemory.SearchResult)
             else
-                searchParams[i] = Il2cpp.ObjectApi:Find(ClassesMemory[searchParam].SearchResult)
+                local classConfig = {Class = searchParam}
+                local searchResult = Il2cpp.ClassApi:Find(classConfig)
+                Il2cppMemory:SetInformaionOfClass(classConfig, searchResult)
+                searchParams[i] = Il2cpp.ObjectApi:Find(searchResult)
             end
         end
         return searchParams
@@ -556,6 +581,23 @@ Il2cpp = {
             end
         end
     },
+    ClassInfoApi = {
+        ---Get FieldInfo by Field Name. If Fields weren't dumped, then this function return `nil`. Also, if Field isn't found by name, then function will return `nil`
+        ---@param self ClassInfo
+        ---@param name string
+        ---@return FieldInfo | nil
+        GetFieldWithName = function(self, name) 
+            local FieldsInfo = self.Fields
+            if FieldsInfo then
+                for fieldIndex = 1, #FieldsInfo do
+                    if FieldsInfo[fieldIndex].FieldName == name then
+                        return FieldsInfo[fieldIndex]
+                    end
+                end
+            end
+            return nil
+        end,
+    },
     ---@type ClassApi
     ClassApi = {
         ---@param self ClassApi
@@ -643,7 +685,7 @@ Il2cpp = {
                 }
             })
             local ClassName = ClassInfo.ClassName or Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[1].value))
-            return {
+            return setmetatable({
                 ClassName = ClassName,
                 ClassAddress = string.format('%X', Il2cpp.FixValue(ClassInfo.ClassInfoAddress)),
                 Methods = (_ClassInfo[2].value > 0 and Config.MethodsDump) and self:GetClassMethods(_ClassInfo[4].value, _ClassInfo[2].value, ClassName) or nil,
@@ -651,7 +693,9 @@ Il2cpp = {
                 Parent = _ClassInfo[6].value ~= 0 and {ClassAddress = string.format('%X', Il2cpp.FixValue(_ClassInfo[6].value)), ClassName = self:GetClassName(_ClassInfo[6].value)} or nil,
                 ClassNameSpace = Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[7].value)),
                 StaticFieldData = _ClassInfo[8].value ~= 0 and Il2cpp.FixValue(_ClassInfo[8].value) or nil
-            }
+            }, {
+                __index = Il2cpp.ClassInfoApi
+            })
         end,
         FindClassWithName = function(self, ClassName)
             gg.clearResults()
@@ -920,7 +964,7 @@ Il2cpp = {
             return self.FilterObjects(FindsResult)
         end,
         ---@param self ObjectApi
-        ---@param ClassesInfo table
+        ---@param ClassesInfo ClassInfo[]
         Find = function(self, ClassesInfo)
             local Objects = {}
             for j = 1, #ClassesInfo do
@@ -1001,10 +1045,8 @@ Il2cpp = setmetatable(Il2cpp, {
             Il2cppApi:ChooseIl2cppVersion(gg.getValues({{address = self.globalMetadataStart + 0x4, flags = gg.TYPE_DWORD}})[1].value)
         end
 
-        Il2cppMemory = {
-            Methods = {},
-            Classes = {}
-        }
+        Il2cppMemory.Methods = {}
+        Il2cppMemory.Classes = {}
     end
 })
 
