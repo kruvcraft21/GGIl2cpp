@@ -259,6 +259,9 @@ end
 
 ```
 
+I will also make some [snippets](/test/) of the code to make it easier to figure out how everything works.
+
+
 ## Memorizing Il2cpp Search Result
 
 `Memorizing Il2cpp Search Result` is a special simple system to speed up the module. It remembers the search results.
