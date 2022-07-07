@@ -1,4 +1,6 @@
-# Tests GGIl2cpp
+# Code snippets for example
+
+## `"Sacrifice"` for the test.
 
 All tests are carried out on the example of [1.apk](/test/1.apk). You can download it in the `test` folder
 
@@ -50,6 +52,9 @@ public class TestClass : MonoBehaviour
 ```
 
 By pressing the `Update` button, the application updates the text on the screen.
+
+
+## An example of how you can change the fields of a certain Test Class object
 
 My code for changing class fields :
 
@@ -174,5 +179,4 @@ Result of code execution:
 Скрипт записал 53,31 КБ в 2 файлов.
 ```
 
-![Screenshot](/test/img/Screenshot_20220705-183155_TestModule.png)
-![Screenshot](/test/img/Screenshot_20220705-183203_TestModule.png)
+![Example](/test/img/TestModule.gif)

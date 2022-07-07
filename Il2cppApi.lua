@@ -349,9 +349,8 @@ Il2cpp = {
     --- Return table with information about methods.
     ---@generic TypeForSearch : number | string
     ---@param searchParams TypeForSearch[] @TypeForSearch = number | string
-    ---@return table
+    ---@return table<number, MethodInfo[] | ErrorSearch>
     FindMethods = function(searchParams)
-        local MethodsMemory = Il2cppMemory.Methods
         for i = 1, #searchParams do
             ---@type number | string
             local searchParam = searchParams[i]
@@ -368,9 +367,8 @@ Il2cpp = {
     --- 
     --- Return table with information about class.
     ---@param searchParams ClassConfig[]
-    ---@return table
+    ---@return table<number, ClassInfo[] | ErrorSearch>
     FindClass = function(searchParams)
-        local ClassesMemory = Il2cppMemory.Classes
         for i = 1, #searchParams do
             ---@type ClassConfig
             local searchParam = searchParams[i]    
@@ -391,8 +389,6 @@ Il2cpp = {
     ---@param searchParams table
     ---@return table
     FindObject = function(searchParams)
-        
-        local ClassesMemory = Il2cppMemory.Classes
         for i = 1, #searchParams do
             local searchParam = searchParams[i]
             local classesMemory = Il2cppMemory:GetInfoOfClass(searchParam)
@@ -410,19 +406,13 @@ Il2cpp = {
     ---@param Address number
     ---@return string
     Utf8ToString = function(Address)
-        local bytes, char = {}, {address = Address, flags = gg.TYPE_BYTE}
-        while gg.getValues({char})[1].value > 0 do
-            bytes[#bytes + 1] = {address = char.address, flags = char.flags}
+        local chars, char = {}, {address = Address, flags = gg.TYPE_BYTE}
+        repeat
+            _char = gg.getValues({char})[1].value
+            chars[#chars + 1] = string.char(_char)
             char.address = char.address + 0x1
-        end
-        return tostring(setmetatable(gg.getValues(bytes), {
-            __tostring = function(self)
-                for k,v in ipairs(self) do
-                    self[k] = string.char(v.value) 
-                end
-                return table.concat(self)
-            end
-        }))
+        until _char <= 0
+        return table.concat(chars)
     end,
     Utf16ToString = function(Address)
         local bytes, strAddress = {}, Il2cpp.FixValue(Address) + (platform and 0x10 or 0x8)
@@ -515,7 +505,7 @@ Il2cpp = {
         ---@param index number @for an api that is higher than 24, this can be a reference to the index
         ---@return string
         GetTypeName = function(self, typeIndex, index)
-            ---@type string | function
+            ---@type string | fun(index : number) : string
             local typeName = self.tableTypes[typeIndex] or "not support type -> 0x" .. string.format('%X', typeIndex)
             if (type(typeName) == 'function') then
                 typeName = typeName(index)
@@ -571,7 +561,7 @@ Il2cpp = {
                     }
                 })
                 _FieldsInfo[i] = {
-                    ClassName = _FieldsInfo.ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[index + 4].value),
+                    ClassName = _FieldsInfo[i].ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[index + 4].value),
                     ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[index + 4].value)),
                     FieldName = Il2cpp.Utf8ToString(Il2cpp.FixValue(FieldsInfo[index + 1].value)),
                     Offset = string.format('%X', FieldsInfo[index + 2].value),
