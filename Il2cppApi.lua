@@ -412,7 +412,7 @@ Il2cpp = {
             chars[#chars + 1] = string.char(_char)
             char.address = char.address + 0x1
         until _char <= 0
-        return table.concat(chars)
+        return table.concat(chars, "", 1, #chars - 1)
     end,
     Utf16ToString = function(Address)
         local bytes, strAddress = {}, Il2cpp.FixValue(Address) + (platform and 0x10 or 0x8)
