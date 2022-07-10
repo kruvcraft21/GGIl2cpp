@@ -432,8 +432,28 @@ Il2cpp = {
             end
         })) or ""
     end,
+    ---@param bytes string
+    ChangeBytesOrder = function(bytes)
+        local newBytes, index, lenBytes = {}, 0, #bytes / 2
+        for byte in string.gmatch(bytes, "..") do
+            newBytes[lenBytes - index] = byte
+            index = index + 1
+        end
+        return table.concat(newBytes)
+    end,
     FixValue = function(val)
         return platform and val or val & 0xFFFFFFFF
+    end,
+    ---@param self Il2cpp
+    ---@param address number | string
+    SearchPointer = function(self, address)
+        address = self.ChangeBytesOrder(type(address) == 'number' and string.format('%X', address) or address)
+        gg.searchNumber('h ' .. address)
+        gg.refineNumber('h ' .. address:sub(1, 6))
+        gg.refineNumber('h ' .. address:sub(1, 2))
+        local FindsResult = gg.getResults(gg.getResultsCount())
+        gg.clearResults()
+        return FindsResult
     end,
     MainType = platform and gg.TYPE_QWORD or gg.TYPE_DWORD,
     ---@type GlobalMetadataApi
@@ -920,45 +940,35 @@ Il2cpp = {
     },
     ---@class ObjectApi
     ObjectApi = {
+        ---@param self ObjectApi
         ---@param Objects table
-        FilterObjects = function(Objects)
+        FilterObjects = function(self, Objects)
             local FilterObjects = {}
-            for k, v in ipairs(gg.getValuesRange(Objects)) do
-                FilterObjects[#FilterObjects + 1] = v == 'A' and Objects[k] or nil
-            end
-            Objects = FilterObjects
-            gg.clearResults()
-            gg.loadResults(Objects)
-            gg.searchPointer(0)
-            local r, FilterObjects = gg.getResults(gg.getResultsCount()), {}
-            gg.clearResults()
-            for k,v in ipairs(gg.getValuesRange(r)) do
-                FilterObjects[#FilterObjects + 1] = v == 'A' and {address = r[k].value, flags = r[k].flags} or nil
+            for k,v in ipairs(gg.getValuesRange(Objects)) do
+                if (v == 'A') and (#Il2cpp:SearchPointer(Objects[k].address) > 0) then
+                    FilterObjects[#FilterObjects + 1] = Objects[k]
+                end
             end
             gg.loadResults(FilterObjects)
-            Objects = gg.getResults(gg.getResultsCount())
+            FilterObjects = gg.getResults(gg.getResultsCount())
             gg.clearResults()
-            return Objects
+            return FilterObjects
         end,
         ---@param self ObjectApi
-        ---@param ClassAddress number
-        FindObject = function(self, ClassAddress)
-            local FindsResult = {}
+        ---@param ClassAddress string
+        FindObjects = function(self, ClassAddress)
             gg.clearResults()
             gg.setRanges(0)
             gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_C_ALLOC)
-            gg.loadResults({{address = ClassAddress, flags = Il2cpp.MainType}})
-            gg.searchPointer(0)
-            FindsResult = gg.getResults(gg.getResultsCount())
-            gg.clearResults()
-            return self.FilterObjects(FindsResult)
+            local FindsResult = Il2cpp:SearchPointer(ClassAddress)
+            return self:FilterObjects(FindsResult)
         end,
         ---@param self ObjectApi
         ---@param ClassesInfo ClassInfo[]
         Find = function(self, ClassesInfo)
             local Objects = {}
             for j = 1, #ClassesInfo do
-                local FindResult = self:FindObject(tonumber(ClassesInfo[j].ClassAddress, 16))
+                local FindResult = self:FindObjects(ClassesInfo[j].ClassAddress)
                 table.move(FindResult, 1, #FindResult, #Objects + 1, Objects)
             end
             return Objects
