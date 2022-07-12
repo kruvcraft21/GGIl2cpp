@@ -7,10 +7,7 @@ All tests are carried out on the example of [1.apk](/test/1.apk). You can downlo
 Class for the test:
 
 ```cs
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 using System;
 
@@ -20,7 +17,10 @@ public class TestClass : MonoBehaviour
     public float field2;
     public static int field3;
 
+    private System.Random random = new System.Random(DateTime.UtcNow.GetHashCode());
+
     private GameObject[] textFields;
+    private GameObject[] textFieldsMethods;
     private void Start()
     {
         field1 = 1;
@@ -28,11 +28,15 @@ public class TestClass : MonoBehaviour
         field3 = 3;
 
         textFields = GameObject.FindGameObjectsWithTag("Field");
+        textFieldsMethods = GameObject.FindGameObjectsWithTag("FieldMethod");
 
         UpdateTextField();
     }
 
-    
+    public int GetField4()
+    {
+        return random.Next(0, 30);
+    }
 
     public void UpdateTextField()
     {
@@ -45,6 +49,13 @@ public class TestClass : MonoBehaviour
             string nameField = textField.name;
             Debug.Log(nameField);
             textField.GetComponent<TextMeshProUGUI>().text = nameField + " = " + testClass.GetField(nameField.ToLower()).GetValue(this).ToString();
+        }
+
+        foreach (GameObject textField in textFieldsMethods)
+        {
+            string nameField = textField.name;
+            Debug.Log(nameField);
+            textField.GetComponent<TextMeshProUGUI>().text = nameField + " = " + testClass.GetMethod("Get" + nameField).Invoke((object)this, null);
         }
     }
 }
@@ -180,3 +191,173 @@ Result of code execution:
 ```
 
 ![Example](/test/img/TestModule.gif)
+
+
+## Example of how you can change the method
+
+
+My code for changing class method:
+
+```Lua
+io.open('il2cppapi.lua',"w+"):write(gg.makeRequest("https://raw.githubusercontent.com/kruvcraft21/GGIl2cpp/master/Il2cppApi.lua").content):close()
+require('il2cppapi')
+os.remove('il2cppapi.lua')
+
+Il2cpp()
+
+---@type ClassConfig
+local TestClassConfig = {}
+
+TestClassConfig.Class = "TestClass"
+TestClassConfig.FieldsDump = true
+
+local TestClasses = Il2cpp.FindClass({TestClassConfig})[1]
+
+local ChangeTestClasses = {}
+
+print(TestClasses)
+
+for k,v in ipairs(TestClasses) do
+    if v.Methods then
+        local Methods = v:GetMethodsWithName("GetField4")
+        for i = 1, #Methods do
+            Il2cpp.PatchesAddress(tonumber(Methods[i].AddressInMemory, 16), Il2cpp.MainType == gg.TYPE_QWORD and "\x40\x02\x80\x52\xc0\x03\x5f\xd6" or "\x12\x00\xa0\xe3\x1e\xff\x2f\xe1")
+        end
+    end
+end
+```
+
+Result of code execution:
+
+```Lua
+Скрипт завершен:
+{ -- table(e4f3080)
+	[1] = { -- table(b7ed6b9)
+		['ClassAddress'] = 'A9CC97E0',
+		['ClassName'] = 'TestClass',
+		['ClassNameSpace'] = '',
+		['Fields'] = { -- table(d72d57b)
+			[1] = { -- table(f128f98)
+				['ClassAddress'] = 'A9CC97E0',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field1',
+				['IsStatic'] = false,
+				['Offset'] = 'C',
+				['Type'] = 'int',
+			},
+			[2] = { -- table(a37a3f1)
+				['ClassAddress'] = 'A9CC97E0',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field2',
+				['IsStatic'] = false,
+				['Offset'] = '10',
+				['Type'] = 'float',
+			},
+			[3] = { -- table(b0a6bd6)
+				['ClassAddress'] = 'A9CC97E0',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field3',
+				['IsStatic'] = true,
+				['Offset'] = '0',
+				['Type'] = 'int',
+			},
+			[4] = { -- table(dcf4e57)
+				['ClassAddress'] = 'A9CC97E0',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'random',
+				['IsStatic'] = false,
+				['Offset'] = '14',
+				['Type'] = 'Random',
+			},
+			[5] = { -- table(96d0d44)
+				['ClassAddress'] = 'A9CC97E0',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'textFields',
+				['IsStatic'] = false,
+				['Offset'] = '18',
+				['Type'] = 'GameObject[]',
+			},
+			[6] = { -- table(4118e2d)
+				['ClassAddress'] = 'A9CC97E0',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'textFieldsMethods',
+				['IsStatic'] = false,
+				['Offset'] = '1C',
+				['Type'] = 'GameObject[]',
+			},
+		},
+		['Methods'] = { -- table(683fafe)
+			[1] = { -- table(b1f725f)
+				['AddressInMemory'] = '62EACC0',
+				['ClassAddress'] = 'A9CC97E0',
+				['ClassName'] = 'TestClass',
+				['MethodInfoAddress'] = 2848833752,
+				['MethodName'] = 'Start',
+				['Offset'] = '2EACC0',
+				['ParamCount'] = 0,
+				['ReturnType'] = 'void',
+			},
+			[2] = { -- table(5b6d4ac)
+				['AddressInMemory'] = '62EB430',
+				['ClassAddress'] = 'A9CC97E0',
+				['ClassName'] = 'TestClass',
+				['MethodInfoAddress'] = 2848833800,
+				['MethodName'] = 'GetField4',
+				['Offset'] = '2EB430',
+				['ParamCount'] = 0,
+				['ReturnType'] = 'int',
+			},
+			[3] = { -- table(cad2575)
+				['AddressInMemory'] = '62EAEA0',
+				['ClassAddress'] = 'A9CC97E0',
+				['ClassName'] = 'TestClass',
+				['MethodInfoAddress'] = 2848833848,
+				['MethodName'] = 'UpdateTextField',
+				['Offset'] = '2EAEA0',
+				['ParamCount'] = 0,
+				['ReturnType'] = 'void',
+			},
+			[4] = { -- table(4a0c90a)
+				['AddressInMemory'] = '62EB45C',
+				['ClassAddress'] = 'A9CC97E0',
+				['ClassName'] = 'TestClass',
+				['MethodInfoAddress'] = 2848833896,
+				['MethodName'] = '.ctor',
+				['Offset'] = '2EB45C',
+				['ParamCount'] = 0,
+				['ReturnType'] = 'void',
+			},
+		},
+		['Parent'] = { -- table(8996f62)
+			['ClassAddress'] = 'B5A439A0',
+			['ClassName'] = 'MonoBehaviour',
+		},
+		['StaticFieldData'] = 2946715040,
+	},
+	[2] = { -- table(11078f3)
+		['ClassAddress'] = 'B5AEA040',
+		['ClassName'] = 'TestClass',
+		['ClassNameSpace'] = '',
+		['Fields'] = { -- table(7cfb9b0)
+			[1] = { -- table(c25e029)
+				['ClassAddress'] = '0',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = '',
+				['IsStatic'] = false,
+				['Offset'] = '0',
+				['Type'] = 'not support type -> 0x0',
+			},
+		},
+		['Parent'] = { -- table(f231fae)
+			['ClassAddress'] = 'D2E5E040',
+			['ClassName'] = 'ValueType',
+		},
+	},
+}
+
+Завершено.
+
+Скрипт записал 54,40 КБ в 2 файлов.
+```
+
+![Exapmle](/test/img/Screenshot_20220712-090652.png)

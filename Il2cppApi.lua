@@ -12,7 +12,8 @@ local platform = gg.getTargetInfo().x64
 ---@field Parent table | nil
 ---@field ClassNameSpace string
 ---@field StaticFieldData number | nil
----@field GetFieldWithName fun(self : ClassInfo, name : string) : FieldInfo | nil
+---@field GetFieldWithName fun(self : ClassInfo, name : string) : FieldInfo | nil @Get FieldInfo by Field Name. If Fields weren't dumped, then this function return `nil`. Also, if Field isn't found by name, then function will return `nil`
+---@field GetMethodsWithName fun(self : ClassInfo, name : string) : MethodInfo[] | nil @Get MethodInfo[] by MethodName. If Methods weren't dumped, then this function return `nil`. Also, if Method isn't found by name, then function will return `table with zero size`
 
 ---@class ParentClassInfo
 ---@field ClassName string
@@ -607,6 +608,22 @@ Il2cpp = {
             end
             return nil
         end,
+        ---Get MethodInfo[] by MethodName. If Methods weren't dumped, then this function return `nil`. Also, if Method isn't found by name, then function will return `table with zero size`
+        ---@param self ClassInfo
+        ---@param name string
+        ---@return MethodInfo[] | nil
+        GetMethodsWithName = function(self, name)
+            local MethodsInfo, MethodsInfoResult = self.Methods, {}
+            if MethodsInfo then
+                for methodIndex = 1, #MethodsInfo do
+                    if MethodsInfo[methodIndex].MethodName == name then
+                        MethodsInfoResult[#MethodsInfoResult + 1] = MethodsInfo[methodIndex]
+                    end
+                end
+                return MethodsInfoResult
+            end
+            return nil
+        end,
     },
     ---@type ClassApi
     ClassApi = {
@@ -948,6 +965,7 @@ Il2cpp = {
                 if (v == 'A') and (#Il2cpp:SearchPointer(Objects[k].address) > 0) then
                     FilterObjects[#FilterObjects + 1] = Objects[k]
                 end
+                gg.toast("Checked objects " .. k .. '/' .. #Objects)
             end
             gg.loadResults(FilterObjects)
             FilterObjects = gg.getResults(gg.getResultsCount())
