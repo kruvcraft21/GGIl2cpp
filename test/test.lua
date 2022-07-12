@@ -9,6 +9,7 @@ local TestClassConfig = {}
 
 TestClassConfig.Class = "TestClass"
 TestClassConfig.FieldsDump = true
+TestClassConfig.MethodsDump = true
 
 local TestClasses = Il2cpp.FindClass({TestClassConfig})[1]
 
@@ -42,3 +43,12 @@ for k,v in ipairs(TestClasses) do
 end
 
 gg.setValues(ChangeTestClasses)
+
+for k,v in ipairs(TestClasses) do
+    if v.Methods then
+        local Methods = v:GetMethodsWithName("GetField4")
+        for i = 1, #Methods do
+            Il2cpp.PatchesAddress(tonumber(Methods[i].AddressInMemory, 16), Il2cpp.MainType == gg.TYPE_QWORD and "\x40\x02\x80\x52\xc0\x03\x5f\xd6" or "\x12\x00\xa0\xe3\x1e\xff\x2f\xe1")
+        end
+    end
+end
