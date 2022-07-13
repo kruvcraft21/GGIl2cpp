@@ -1,4 +1,4 @@
-local platform = gg.getTargetInfo().x64
+local platform, sdk = gg.getTargetInfo().x64, gg.getTargetInfo().targetSdkVersion
 
 ---@class ClassInfoRaw
 ---@field ClassName string | nil
@@ -217,7 +217,7 @@ Il2cppApi = {
         MethodsApiClassOffset = platform and 0x20 or 0x10,
         MethodsApiNameOffset = platform and 0x18 or 0xC,
         MethodsApiParamCount = platform and 0x52 or 0x2E,
-        MethodsApiReturnType = platform and 0x20 or 0x14,
+        MethodsApiReturnType = platform and 0x28 or 0x14,
         typeDefinitionsSize = 88,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -961,16 +961,32 @@ Il2cpp = {
         ---@param Objects table
         FilterObjects = function(self, Objects)
             local FilterObjects = {}
-            for k,v in ipairs(gg.getValuesRange(Objects)) do
-                if (v == 'A') and (#Il2cpp:SearchPointer(Objects[k].address) > 0) then
+            for k, v in ipairs(gg.getValuesRange(Objects)) do
+                if v == 'A' then
                     FilterObjects[#FilterObjects + 1] = Objects[k]
                 end
-                gg.toast("Checked objects " .. k .. '/' .. #Objects)
+            end
+            Objects = FilterObjects
+            gg.loadResults(Objects)
+            gg.searchPointer(0)
+            if gg.getResultsCount() <= 0 and platform and sdk >= 30 then
+                for k,v in ipairs(Objects) do
+                    v.address = v.address | 0xB400000000000000
+                end
+                gg.loadResults(Objects)
+                gg.searchPointer(0)
+            end
+            local RefToObjects, FilterObjects = gg.getResults(gg.getResultsCount()), {}
+            gg.clearResults()
+            for k,v in ipairs(gg.getValuesRange(RefToObjects)) do
+                if v == 'A' then
+                    FilterObjects[#FilterObjects + 1] = {address = Il2cpp.FixValue(RefToObjects[k].value) & 0x00FFFFFFFFFFFFFF, flags = RefToObjects[k].flags}
+                end
             end
             gg.loadResults(FilterObjects)
-            FilterObjects = gg.getResults(gg.getResultsCount())
+            local _FilterObjects = gg.getResults(gg.getResultsCount())
             gg.clearResults()
-            return FilterObjects
+            return _FilterObjects
         end,
         ---@param self ObjectApi
         ---@param ClassAddress string
@@ -978,7 +994,14 @@ Il2cpp = {
             gg.clearResults()
             gg.setRanges(0)
             gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_C_ALLOC)
-            local FindsResult = Il2cpp:SearchPointer(ClassAddress)
+            gg.loadResults({{address = tonumber(ClassAddress, 16), flags = Il2cpp.MainType}})
+            gg.searchPointer(0)
+            if gg.getResultsCount() <= 0 and platform and sdk >= 30 then
+                gg.loadResults({{address = tonumber(ClassAddress, 16) | 0xB400000000000000, flags = Il2cpp.MainType}})
+                gg.searchPointer(0)
+            end
+            local FindsResult = gg.getResults(gg.getResultsCount())
+            gg.clearResults()
             return self:FilterObjects(FindsResult)
         end,
         ---@param self ObjectApi
