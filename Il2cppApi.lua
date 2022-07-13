@@ -970,11 +970,15 @@ Il2cpp = {
             gg.loadResults(Objects)
             gg.searchPointer(0)
             if gg.getResultsCount() <= 0 and platform and sdk >= 30 then
+                local FixRefToObjects = {}
                 for k,v in ipairs(Objects) do
-                    v.address = v.address | 0xB400000000000000
+                    gg.searchNumber(tostring(v.address | 0xB400000000000000), gg.TYPE_QWORD)
+                    ---@type tablelib
+                    local RefToObject = gg.getResults(gg.getResultsCount())
+                    RefToObject:move(1, #RefToObject, #FixRefToObjects + 1, FixRefToObjects)
+                    gg.clearResults()
                 end
-                gg.loadResults(Objects)
-                gg.searchPointer(0)
+                gg.loadResults(FixRefToObjects)
             end
             local RefToObjects, FilterObjects = gg.getResults(gg.getResultsCount()), {}
             gg.clearResults()
@@ -997,8 +1001,7 @@ Il2cpp = {
             gg.loadResults({{address = tonumber(ClassAddress, 16), flags = Il2cpp.MainType}})
             gg.searchPointer(0)
             if gg.getResultsCount() <= 0 and platform and sdk >= 30 then
-                gg.loadResults({{address = tonumber(ClassAddress, 16) | 0xB400000000000000, flags = Il2cpp.MainType}})
-                gg.searchPointer(0)
+                gg.searchNumber(tostring(tonumber(ClassAddress, 16) | 0xB400000000000000), gg.TYPE_QWORD)
             end
             local FindsResult = gg.getResults(gg.getResultsCount())
             gg.clearResults()
