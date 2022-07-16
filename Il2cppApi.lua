@@ -154,6 +154,29 @@ end
 
 ---@type Il2cppApi[]
 Il2cppApi = {
+    [24.1] = {
+        FieldApiOffset = platform and 0x18 or 0xC,
+        FieldApiType = platform and 0x8 or 0x4,
+        FieldApiClassOffset = platform and 0x10 or 0x8,
+        ClassApiNameOffset = platform and 0x10 or 0x8,
+        ClassApiMethodsStep = platform and 3 or 2,
+        ClassApiCountMethods = platform and 0x110 or 0xA8,
+        ClassApiMethodsLink = platform and 0x98 or 0x4C,
+        ClassApiFieldsLink = platform and 0x80 or 0x40,
+        ClassApiFieldsStep = platform and 0x20 or 0x14,
+        ClassApiCountFields = platform and 0x114 or 0xAC,
+        ClassApiParentOffset = platform and 0x58 or 0x2C,
+        ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
+        ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
+        MethodsApiClassOffset = platform and 0x18 or 0xC,
+        MethodsApiNameOffset = platform and 0x10 or 0x8,
+        MethodsApiParamCount = platform and 0x4A or 0x2A,
+        MethodsApiReturnType = platform and 0x20 or 0x10,
+        typeDefinitionsSize = 100,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        TypeApiType = platform and 0xA or 0x6,
+    },
     [24] = {
         FieldApiOffset = platform and 0x18 or 0xC,
         FieldApiType = platform and 0x8 or 0x4,
@@ -223,8 +246,7 @@ Il2cppApi = {
         stringOffset = 0x18,
         TypeApiType = platform and 0xA or 0x6,
     },
-    ---@param self Il2cppApi[]
-    ChooseIl2cppVersion = function(self, version)
+    CheckVersion = function(self, version)
         if (version <= 24 and version > 0) then
             version = 24
         elseif (version > 24 and version < 29) then
@@ -234,10 +256,24 @@ Il2cppApi = {
         else
             version = 0
         end
-        if (self[version]) then
-            ---@type Il2cppApi
-            local api = self[version]
-
+        return self[version]
+    end,
+    CheckIs24Version = function()
+        gg.setRanges(gg.REGION_CODE_APP)
+        gg.clearResults()
+        gg.searchNumber("32h;30h;0~~0;0~~0;2Eh;0~~0;2Eh;66h::11", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 16)
+        local versionTable = gg.getResults(1)
+        gg.clearResults()
+        local verisonName = Il2cpp.Utf8ToString(versionTable[1].address)
+        return string.find(verisonName, "2017") or string.find(verisonName, "2018")
+    end,
+    ---@param self Il2cppApi[]
+    ChooseIl2cppVersion = function(self, version)
+        if version == 24 then
+            version = self.CheckIs24Version() and 24.1 or 24
+        end
+        local api = self[version] or self:CheckVersion(version)
+        if (api) then
             Il2cpp.FieldApi.Offset = api.FieldApiOffset
             Il2cpp.FieldApi.Type = api.FieldApiType
             Il2cpp.FieldApi.ClassOffset = api.FieldApiClassOffset
@@ -514,7 +550,7 @@ Il2cpp = {
                 return Il2cpp.TypeApi:GetTypeName(typeMassiv[2].value, typeMassiv[1].value) .. "[]"
             end,
             [21] = function(index)
-                if (Il2cpp.GlobalMetadataApi.version > 24) then
+                if (Il2cpp.GlobalMetadataApi.version > 24.1) then
                     index = gg.getValues({{address = Il2cpp.FixValue(index), flags = Il2cpp.MainType}})[1].value
                 end
                 index = gg.getValues({{address = Il2cpp.FixValue(index), flags = Il2cpp.MainType}})[1].value
