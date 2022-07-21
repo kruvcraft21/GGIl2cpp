@@ -479,7 +479,7 @@ Il2cpp = {
         return table.concat(newBytes)
     end,
     FixValue = function(val)
-        return platform and val or val & 0xFFFFFFFF
+        return platform and val & 0x00FFFFFFFFFFFFFF or val & 0xFFFFFFFF
     end,
     ---@param self Il2cpp
     ---@param address number | string
@@ -629,7 +629,7 @@ Il2cpp = {
         end
     },
     ClassInfoApi = {
-        ---Get FieldInfo by Field Name. If Fields weren't dumped, then this function return `nil`. Also, if Field isn't found by name, then function will return `nil`
+        ---Get FieldInfo by Field Name. If Field isn't found by name, then function will return `nil`
         ---@param self ClassInfo
         ---@param name string
         ---@return FieldInfo | nil
@@ -641,13 +641,27 @@ Il2cpp = {
                         return FieldsInfo[fieldIndex]
                     end
                 end
+            else
+                local ClassAddress = tonumber(self.ClassAddress, 16)
+                local _ClassInfo = gg.getValues({
+                    { -- Link as Fields
+                        address = ClassAddress + Il2cpp.ClassApi.FieldsLink,
+                        flags = Il2cpp.MainType
+                    },
+                    { -- Fields Count
+                        address = ClassAddress + Il2cpp.ClassApi.CountFields,
+                        flags = gg.TYPE_WORD
+                    }
+                })
+                self.Fields = Il2cpp.ClassApi:GetClassFields(Il2cpp.FixValue(_ClassInfo[1].value), _ClassInfo[2].value, self.ClassName)
+                return self:GetFieldWithName(name)
             end
             return nil
         end,
-        ---Get MethodInfo[] by MethodName. If Methods weren't dumped, then this function return `nil`. Also, if Method isn't found by name, then function will return `table with zero size`
+        ---Get MethodInfo[] by MethodName. If Method isn't found by name, then function will return `table with zero size`
         ---@param self ClassInfo
         ---@param name string
-        ---@return MethodInfo[] | nil
+        ---@return MethodInfo[]
         GetMethodsWithName = function(self, name)
             local MethodsInfo, MethodsInfoResult = self.Methods, {}
             if MethodsInfo then
@@ -657,8 +671,21 @@ Il2cpp = {
                     end
                 end
                 return MethodsInfoResult
+            else
+                local ClassAddress = tonumber(self.ClassAddress, 16)
+                local _ClassInfo = gg.getValues({
+                    { -- Link as Methods
+                        address = ClassAddress + Il2cpp.ClassApi.MethodsLink,
+                        flags = Il2cpp.MainType,
+                    },
+                    { -- Methods Count
+                        address = ClassAddress + Il2cpp.ClassApi.CountMethods,
+                        flags = gg.TYPE_WORD
+                    }
+                })
+                self.Methods = Il2cpp.ClassApi:GetClassMethods(Il2cpp.FixValue(_ClassInfo[1].value), _ClassInfo[2].value, self.ClassName)
+                return self:GetMethodsWithName(name)
             end
-            return nil
         end,
     },
     ---@type ClassApi
@@ -751,8 +778,8 @@ Il2cpp = {
             return setmetatable({
                 ClassName = ClassName,
                 ClassAddress = string.format('%X', Il2cpp.FixValue(ClassInfo.ClassInfoAddress)),
-                Methods = (_ClassInfo[2].value > 0 and Config.MethodsDump) and self:GetClassMethods(_ClassInfo[4].value, _ClassInfo[2].value, ClassName) or nil,
-                Fields = (_ClassInfo[3].value > 0 and Config.FieldsDump) and self:GetClassFields(_ClassInfo[5].value, _ClassInfo[3].value, ClassName) or nil,
+                Methods = (_ClassInfo[2].value > 0 and Config.MethodsDump) and self:GetClassMethods(Il2cpp.FixValue(_ClassInfo[4].value), _ClassInfo[2].value, ClassName) or nil,
+                Fields = (_ClassInfo[3].value > 0 and Config.FieldsDump) and self:GetClassFields(Il2cpp.FixValue(_ClassInfo[5].value), _ClassInfo[3].value, ClassName) or nil,
                 Parent = _ClassInfo[6].value ~= 0 and {ClassAddress = string.format('%X', Il2cpp.FixValue(_ClassInfo[6].value)), ClassName = self:GetClassName(_ClassInfo[6].value)} or nil,
                 ClassNameSpace = Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[7].value)),
                 StaticFieldData = _ClassInfo[8].value ~= 0 and Il2cpp.FixValue(_ClassInfo[8].value) or nil
@@ -1020,7 +1047,7 @@ Il2cpp = {
             gg.clearResults()
             for k,v in ipairs(gg.getValuesRange(RefToObjects)) do
                 if v == 'A' then
-                    FilterObjects[#FilterObjects + 1] = {address = Il2cpp.FixValue(RefToObjects[k].value) & 0x00FFFFFFFFFFFFFF, flags = RefToObjects[k].flags}
+                    FilterObjects[#FilterObjects + 1] = {address = Il2cpp.FixValue(RefToObjects[k].value), flags = RefToObjects[k].flags}
                 end
             end
             gg.loadResults(FilterObjects)

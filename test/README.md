@@ -90,7 +90,7 @@ print(TestClasses)
 
 for k,v in ipairs(TestClasses) do
     local TestClassObject = Il2cpp.FindObject({tonumber(v.ClassAddress, 16)})[1]
-    if #v.Fields > 1 then
+    if v.Parent and v.Parent.ClassName ~= "ValueType" then
         for i = 1, #TestClassObject do
             ChangeTestClasses[#ChangeTestClasses + 1] = {
                 address = TestClassObject[i].address + tonumber(v:GetFieldWithName("field1").Offset, 16),
@@ -217,8 +217,8 @@ local TestClasses = Il2cpp.FindClass({TestClassConfig})[1]
 print(TestClasses)
 
 for k,v in ipairs(TestClasses) do
-    if v.Methods then
-        local Methods = v:GetMethodsWithName("GetField4")
+    local Methods = v:GetMethodsWithName("GetField4")
+    if #Methods > 0 then
         for i = 1, #Methods do
             Il2cpp.PatchesAddress(tonumber(Methods[i].AddressInMemory, 16), Il2cpp.MainType == gg.TYPE_QWORD and "\x40\x02\x80\x52\xc0\x03\x5f\xd6" or "\x12\x00\xa0\xe3\x1e\xff\x2f\xe1")
         end
