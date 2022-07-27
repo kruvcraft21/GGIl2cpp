@@ -12,6 +12,7 @@ local platform, sdk = gg.getTargetInfo().x64, gg.getTargetInfo().targetSdkVersio
 ---@field Parent table | nil
 ---@field ClassNameSpace string
 ---@field StaticFieldData number | nil
+---@field IsEnum boolean
 ---@field GetFieldWithName fun(self : ClassInfo, name : string) : FieldInfo | nil @Get FieldInfo by Field Name. If Fields weren't dumped, then this function return `nil`. Also, if Field isn't found by name, then function will return `nil`
 ---@field GetMethodsWithName fun(self : ClassInfo, name : string) : MethodInfo[] | nil @Get MethodInfo[] by MethodName. If Methods weren't dumped, then this function return `nil`. Also, if Method isn't found by name, then function will return `table with zero size`
 
@@ -48,6 +49,8 @@ local platform, sdk = gg.getTargetInfo().x64, gg.getTargetInfo().targetSdkVersio
 ---@field ParentOffset number
 ---@field NameSpaceOffset number
 ---@field StaticFieldDataOffset number
+---@field EnumType number
+---@field EnumRsh number
 
 ---@class ClassesMemory
 ---@field Config ClassConfig
@@ -101,6 +104,8 @@ local platform, sdk = gg.getTargetInfo().x64, gg.getTargetInfo().targetSdkVersio
 ---@field ClassApiParentOffset number
 ---@field ClassApiNameSpaceOffset number
 ---@field ClassApiStaticFieldDataOffset number
+---@field ClassApiEnumType number
+---@field ClassApiEnumRsh number
 ---@field MethodsApiClassOffset number
 ---@field MethodsApiNameOffset number
 ---@field MethodsApiParamCount number
@@ -152,6 +157,122 @@ function GetTypeClassName(index)
     return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
 end
 
+---@class VersionEngine
+VersionEngine = {
+    Year = {
+        [2017] = function(p2, p3)
+            return 24
+        end,
+        [2018] = function(p2, p3)
+            return tonumber(p2) >= 3 and 24.1 or 24
+        end,
+        [2019] = function(p2, p3)
+            p2, p3 = tonumber(p2), tonumber(p3)
+            local version = 24.2
+            if p2 == 3 then
+                if p3 >= 7 then
+                    version = 24.3
+                end
+            end
+
+            if p2 > 3 then
+                version = 24.3
+            end
+
+            if p2 == 4 then
+                if p3 >= 15 then
+                    version = 24.4
+                end
+                if p3 >= 21 then
+                    version = 24.5
+                end
+            end
+            return version
+        end,
+        [2020] = function(p2, p3)
+            p2, p3 = tonumber(p2), tonumber(p3)
+            local version = 24.3
+            if p2 == 1 and p3 >= 11 then
+                version = 24.4
+            end
+
+            if p2 == 2 then
+                version = 27
+            end
+
+            if p2 > 2 or (p2 == 2 and p3 >= 4) then
+                version = 27.1
+            end
+            return version
+        end,
+        [2021] = function(p2, p3)
+            return tonumber(p2) >= 2 and 29 or 27.2
+        end,
+        [2022] = function(p2, p3)
+            return 29
+        end,
+    },
+    ---@return string @year
+    ---@return string 
+    ---@return string
+    GetUnityVersion = function()
+        gg.setRanges(gg.REGION_CODE_APP)
+        gg.clearResults()
+        gg.searchNumber("32h;30h;0~~0;0~~0;2Eh;0~~0;2Eh;66h::11", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 16)
+        local versionTable = gg.getResults(1)
+        gg.clearResults()
+        local verisonName = Il2cpp.Utf8ToString(versionTable[1].address)
+        local i, j = string.find(verisonName, ".+f")
+        if j then verisonName = string.sub(verisonName, i,j - 1) end
+        return string.gmatch(verisonName, "([^%.]+)%.([^%.]+)%.([^%.]+)")()
+    end,
+    ---@param self VersionEngine
+    ---@param version? number
+    ChooseVersion = function(self, version)
+        if not version then
+            local p1, p2, p3 = self.GetUnityVersion()
+            ---@type number | fun(p2 : string, p3: string):number
+            version = self.Year[tonumber(p1)] or 29
+            if type(version) == 'function' then
+                version = version(p2, p3)
+            end
+        end
+        local api = Il2cppApi[version] 
+        if (api) then
+            Il2cpp.FieldApi.Offset = api.FieldApiOffset
+            Il2cpp.FieldApi.Type = api.FieldApiType
+            Il2cpp.FieldApi.ClassOffset = api.FieldApiClassOffset
+
+            Il2cpp.ClassApi.NameOffset = api.ClassApiNameOffset
+            Il2cpp.ClassApi.MethodsStep = api.ClassApiMethodsStep
+            Il2cpp.ClassApi.CountMethods = api.ClassApiCountMethods
+            Il2cpp.ClassApi.MethodsLink = api.ClassApiMethodsLink
+            Il2cpp.ClassApi.FieldsLink = api.ClassApiFieldsLink
+            Il2cpp.ClassApi.FieldsStep = api.ClassApiFieldsStep
+            Il2cpp.ClassApi.CountFields = api.ClassApiCountFields
+            Il2cpp.ClassApi.ParentOffset = api.ClassApiParentOffset
+            Il2cpp.ClassApi.NameSpaceOffset = api.ClassApiNameSpaceOffset
+            Il2cpp.ClassApi.StaticFieldDataOffset = api.ClassApiStaticFieldDataOffset
+            Il2cpp.ClassApi.EnumType = api.ClassApiEnumType
+            Il2cpp.ClassApi.EnumRsh = api.ClassApiEnumRsh
+
+            Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
+            Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
+            Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
+            Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
+
+            Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
+            Il2cpp.GlobalMetadataApi.typeDefinitionsOffset = api.typeDefinitionsOffset
+            Il2cpp.GlobalMetadataApi.stringOffset = api.stringOffset
+            Il2cpp.GlobalMetadataApi.version = version
+
+            Il2cpp.TypeApi.Type = api.TypeApiType
+        else
+            error('Not support this il2cpp version')
+        end 
+    end,
+}
+
 ---@type Il2cppApi[]
 Il2cppApi = {
     [24.1] = {
@@ -168,6 +289,8 @@ Il2cppApi = {
         ClassApiParentOffset = platform and 0x58 or 0x2C,
         ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
+        ClassApiEnumType = platform and 0x126 or 0xBE,
+        ClassApiEnumRsh = 3,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -183,6 +306,31 @@ Il2cppApi = {
         FieldApiClassOffset = platform and 0x10 or 0x8,
         ClassApiNameOffset = platform and 0x10 or 0x8,
         ClassApiMethodsStep = platform and 3 or 2,
+        ClassApiCountMethods = platform and 0x114 or 0xAC,
+        ClassApiMethodsLink = platform and 0x98 or 0x4C,
+        ClassApiFieldsLink = platform and 0x80 or 0x40,
+        ClassApiFieldsStep = platform and 0x28 or 0x18,
+        ClassApiCountFields = platform and 0x118 or 0xB0,
+        ClassApiParentOffset = platform and 0x58 or 0x2C,
+        ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
+        ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
+        ClassApiEnumType = platform and 0x129 or 0xC1,
+        ClassApiEnumRsh = 2,
+        MethodsApiClassOffset = platform and 0x18 or 0xC,
+        MethodsApiNameOffset = platform and 0x10 or 0x8,
+        MethodsApiParamCount = platform and 0x4E or 0x2E,
+        MethodsApiReturnType = platform and 0x20 or 0x10,
+        typeDefinitionsSize = 104,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        TypeApiType = platform and 0xA or 0x6,
+    },
+    [24.2] = {
+        FieldApiOffset = platform and 0x18 or 0xC,
+        FieldApiType = platform and 0x8 or 0x4,
+        FieldApiClassOffset = platform and 0x10 or 0x8,
+        ClassApiNameOffset = platform and 0x10 or 0x8,
+        ClassApiMethodsStep = platform and 3 or 2,
         ClassApiCountMethods = platform and 0x118 or 0xA4,
         ClassApiMethodsLink = platform and 0x98 or 0x4C,
         ClassApiFieldsLink = platform and 0x80 or 0x40,
@@ -191,6 +339,83 @@ Il2cppApi = {
         ClassApiParentOffset = platform and 0x58 or 0x2C,
         ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
+        ClassApiEnumType = platform and 0x12e or 0xBA,
+        ClassApiEnumRsh = 3,
+        MethodsApiClassOffset = platform and 0x18 or 0xC,
+        MethodsApiNameOffset = platform and 0x10 or 0x8,
+        MethodsApiParamCount = platform and 0x4A or 0x2A,
+        MethodsApiReturnType = platform and 0x20 or 0x10,
+        typeDefinitionsSize = 92,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        TypeApiType = platform and 0xA or 0x6,
+    },
+    [24.3] = {
+        FieldApiOffset = platform and 0x18 or 0xC,
+        FieldApiType = platform and 0x8 or 0x4,
+        FieldApiClassOffset = platform and 0x10 or 0x8,
+        ClassApiNameOffset = platform and 0x10 or 0x8,
+        ClassApiMethodsStep = platform and 3 or 2,
+        ClassApiCountMethods = platform and 0x118 or 0xA4,
+        ClassApiMethodsLink = platform and 0x98 or 0x4C,
+        ClassApiFieldsLink = platform and 0x80 or 0x40,
+        ClassApiFieldsStep = platform and 0x20 or 0x14,
+        ClassApiCountFields = platform and 0x11c or 0xA8,
+        ClassApiParentOffset = platform and 0x58 or 0x2C,
+        ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
+        ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
+        ClassApiEnumType = platform and 0x12e or 0xBA,
+        ClassApiEnumRsh = 3,
+        MethodsApiClassOffset = platform and 0x18 or 0xC,
+        MethodsApiNameOffset = platform and 0x10 or 0x8,
+        MethodsApiParamCount = platform and 0x4A or 0x2A,
+        MethodsApiReturnType = platform and 0x20 or 0x10,
+        typeDefinitionsSize = 92,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        TypeApiType = platform and 0xA or 0x6,
+    },
+    [24.4] = {
+        FieldApiOffset = platform and 0x18 or 0xC,
+        FieldApiType = platform and 0x8 or 0x4,
+        FieldApiClassOffset = platform and 0x10 or 0x8,
+        ClassApiNameOffset = platform and 0x10 or 0x8,
+        ClassApiMethodsStep = platform and 3 or 2,
+        ClassApiCountMethods = platform and 0x118 or 0xA4,
+        ClassApiMethodsLink = platform and 0x98 or 0x4C,
+        ClassApiFieldsLink = platform and 0x80 or 0x40,
+        ClassApiFieldsStep = platform and 0x20 or 0x14,
+        ClassApiCountFields = platform and 0x11c or 0xA8,
+        ClassApiParentOffset = platform and 0x58 or 0x2C,
+        ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
+        ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
+        ClassApiEnumType = platform and 0x12e or 0xBA,
+        ClassApiEnumRsh = 3,
+        MethodsApiClassOffset = platform and 0x18 or 0xC,
+        MethodsApiNameOffset = platform and 0x10 or 0x8,
+        MethodsApiParamCount = platform and 0x4A or 0x2A,
+        MethodsApiReturnType = platform and 0x20 or 0x10,
+        typeDefinitionsSize = 92,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        TypeApiType = platform and 0xA or 0x6,
+    },
+    [24.5] = {
+        FieldApiOffset = platform and 0x18 or 0xC,
+        FieldApiType = platform and 0x8 or 0x4,
+        FieldApiClassOffset = platform and 0x10 or 0x8,
+        ClassApiNameOffset = platform and 0x10 or 0x8,
+        ClassApiMethodsStep = platform and 3 or 2,
+        ClassApiCountMethods = platform and 0x118 or 0xA4,
+        ClassApiMethodsLink = platform and 0x98 or 0x4C,
+        ClassApiFieldsLink = platform and 0x80 or 0x40,
+        ClassApiFieldsStep = platform and 0x20 or 0x14,
+        ClassApiCountFields = platform and 0x11c or 0xA8,
+        ClassApiParentOffset = platform and 0x58 or 0x2C,
+        ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
+        ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
+        ClassApiEnumType = platform and 0x12e or 0xBA,
+        ClassApiEnumRsh = 3,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -214,6 +439,58 @@ Il2cppApi = {
         ClassApiParentOffset = platform and 0x58 or 0x2C,
         ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
+        ClassApiEnumType = platform and 0x132 or 0xBA,
+        ClassApiEnumRsh = 3,
+        MethodsApiClassOffset = platform and 0x18 or 0xC,
+        MethodsApiNameOffset = platform and 0x10 or 0x8,
+        MethodsApiParamCount = platform and 0x4A or 0x2A,
+        MethodsApiReturnType = platform and 0x20 or 0x10,
+        typeDefinitionsSize = 88,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        TypeApiType = platform and 0xA or 0x6,
+    },
+    [27.1] = {
+        FieldApiOffset = platform and 0x18 or 0xC,
+        FieldApiType = platform and 0x8 or 0x4,
+        FieldApiClassOffset = platform and 0x10 or 0x8,
+        ClassApiNameOffset = platform and 0x10 or 0x8,
+        ClassApiMethodsStep = platform and 3 or 2,
+        ClassApiCountMethods = platform and 0x11C or 0xA4,
+        ClassApiMethodsLink = platform and 0x98 or 0x4C,
+        ClassApiFieldsLink = platform and 0x80 or 0x40,
+        ClassApiFieldsStep = platform and 0x20 or 0x14,
+        ClassApiCountFields = platform and 0x120 or 0xA8,
+        ClassApiParentOffset = platform and 0x58 or 0x2C,
+        ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
+        ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
+        ClassApiEnumType = platform and 0x132 or 0xBA,
+        ClassApiEnumRsh = 3,
+        MethodsApiClassOffset = platform and 0x18 or 0xC,
+        MethodsApiNameOffset = platform and 0x10 or 0x8,
+        MethodsApiParamCount = platform and 0x4A or 0x2A,
+        MethodsApiReturnType = platform and 0x20 or 0x10,
+        typeDefinitionsSize = 88,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        TypeApiType = platform and 0xA or 0x6,
+    },
+    [27.2] = {
+        FieldApiOffset = platform and 0x18 or 0xC,
+        FieldApiType = platform and 0x8 or 0x4,
+        FieldApiClassOffset = platform and 0x10 or 0x8,
+        ClassApiNameOffset = platform and 0x10 or 0x8,
+        ClassApiMethodsStep = platform and 3 or 2,
+        ClassApiCountMethods = platform and 0x11C or 0xA4,
+        ClassApiMethodsLink = platform and 0x98 or 0x4C,
+        ClassApiFieldsLink = platform and 0x80 or 0x40,
+        ClassApiFieldsStep = platform and 0x20 or 0x14,
+        ClassApiCountFields = platform and 0x120 or 0xA8,
+        ClassApiParentOffset = platform and 0x58 or 0x2C,
+        ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
+        ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
+        ClassApiEnumType = platform and 0x132 or 0xBA,
+        ClassApiEnumRsh = 2,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -237,6 +514,8 @@ Il2cppApi = {
         ClassApiParentOffset = platform and 0x58 or 0x2C,
         ClassApiNameSpaceOffset = platform and 0x18 or 0xC,
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
+        ClassApiEnumType = platform and 0x132 or 0xBA,
+        ClassApiEnumRsh = 2,
         MethodsApiClassOffset = platform and 0x20 or 0x10,
         MethodsApiNameOffset = platform and 0x18 or 0xC,
         MethodsApiParamCount = platform and 0x52 or 0x2E,
@@ -245,65 +524,7 @@ Il2cppApi = {
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
         TypeApiType = platform and 0xA or 0x6,
-    },
-    CheckVersion = function(self, version)
-        if (version <= 24 and version > 0) then
-            version = 24
-        elseif (version > 24 and version < 29) then
-            version = 27
-        elseif (version >= 29 and version < 40) then
-            version = 29
-        else
-            version = 0
-        end
-        return self[version]
-    end,
-    CheckIs24Version = function()
-        gg.setRanges(gg.REGION_CODE_APP)
-        gg.clearResults()
-        gg.searchNumber("32h;30h;0~~0;0~~0;2Eh;0~~0;2Eh;66h::11", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 16)
-        local versionTable = gg.getResults(1)
-        gg.clearResults()
-        local verisonName = Il2cpp.Utf8ToString(versionTable[1].address)
-        return string.find(verisonName, "2017") or string.find(verisonName, "2018")
-    end,
-    ---@param self Il2cppApi[]
-    ChooseIl2cppVersion = function(self, version)
-        if version == 24 then
-            version = self.CheckIs24Version() and 24.1 or 24
-        end
-        local api = self[version] or self:CheckVersion(version)
-        if (api) then
-            Il2cpp.FieldApi.Offset = api.FieldApiOffset
-            Il2cpp.FieldApi.Type = api.FieldApiType
-            Il2cpp.FieldApi.ClassOffset = api.FieldApiClassOffset
-
-            Il2cpp.ClassApi.NameOffset = api.ClassApiNameOffset
-            Il2cpp.ClassApi.MethodsStep = api.ClassApiMethodsStep
-            Il2cpp.ClassApi.CountMethods = api.ClassApiCountMethods
-            Il2cpp.ClassApi.MethodsLink = api.ClassApiMethodsLink
-            Il2cpp.ClassApi.FieldsLink = api.ClassApiFieldsLink
-            Il2cpp.ClassApi.FieldsStep = api.ClassApiFieldsStep
-            Il2cpp.ClassApi.CountFields = api.ClassApiCountFields
-            Il2cpp.ClassApi.ParentOffset = api.ClassApiParentOffset
-            Il2cpp.ClassApi.NameSpaceOffset = api.ClassApiNameSpaceOffset
-            Il2cpp.ClassApi.StaticFieldDataOffset = api.ClassApiStaticFieldDataOffset
-
-            Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
-            Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
-            Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
-            Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
-
-            Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
-            Il2cpp.GlobalMetadataApi.typeDefinitionsOffset = api.typeDefinitionsOffset
-            Il2cpp.GlobalMetadataApi.stringOffset = api.stringOffset
-            Il2cpp.GlobalMetadataApi.version = version
-
-            Il2cpp.TypeApi.Type = api.TypeApiType
-        else
-            error('Not support this il2cpp version')
-        end 
-    end
+    }
 }
 
 -- Memorizing Il2cpp Search Result
@@ -446,7 +667,7 @@ Il2cpp = {
         local chars, char = {}, {address = Address, flags = gg.TYPE_BYTE}
         repeat
             _char = gg.getValues({char})[1].value
-            chars[#chars + 1] = string.char(_char)
+            chars[#chars + 1] = string.char(_char & 0xFF)
             char.address = char.address + 0x1
         until _char <= 0
         return table.concat(chars, "", 1, #chars - 1)
@@ -550,7 +771,7 @@ Il2cpp = {
                 return Il2cpp.TypeApi:GetTypeName(typeMassiv[2].value, typeMassiv[1].value) .. "[]"
             end,
             [21] = function(index)
-                if (Il2cpp.GlobalMetadataApi.version > 24.1) then
+                if not (Il2cpp.GlobalMetadataApi.version <= 27) then
                     index = gg.getValues({{address = Il2cpp.FixValue(index), flags = Il2cpp.MainType}})[1].value
                 end
                 index = gg.getValues({{address = Il2cpp.FixValue(index), flags = Il2cpp.MainType}})[1].value
@@ -741,37 +962,41 @@ Il2cpp = {
         ---@return table
         UnpackClassInfo = function(self, ClassInfo, Config)
             local _ClassInfo = gg.getValues({ 
-                { -- Class Name
+                { -- Class Name [1]
                     address = ClassInfo.ClassInfoAddress + self.NameOffset,
                     flags = Il2cpp.MainType
                 },
-                { -- Methods Count
+                { -- Methods Count [2]
                     address = ClassInfo.ClassInfoAddress + self.CountMethods,
                     flags = gg.TYPE_WORD
                 },
-                { -- Fields Count
+                { -- Fields Count [3]
                     address = ClassInfo.ClassInfoAddress + self.CountFields,
                     flags = gg.TYPE_WORD
                 },
-                { -- Link as Methods
+                { -- Link as Methods [4]
                     address = ClassInfo.ClassInfoAddress + self.MethodsLink,
                     flags = Il2cpp.MainType
                 },
-                { -- Link as Fields
+                { -- Link as Fields [5]
                     address = ClassInfo.ClassInfoAddress + self.FieldsLink,
                     flags = Il2cpp.MainType
                 },
-                { -- Link as Parent Class
+                { -- Link as Parent Class [6]
                     address = ClassInfo.ClassInfoAddress + self.ParentOffset,
                     flags = Il2cpp.MainType
                 },
-                { -- Class NameSpace
+                { -- Class NameSpace [7]
                     address = ClassInfo.ClassInfoAddress + self.NameSpaceOffset,
                     flags = Il2cpp.MainType
                 },
-                { -- Class Static Field Data
+                { -- Class Static Field Data [8]
                     address = ClassInfo.ClassInfoAddress + self.StaticFieldDataOffset,
                     flags = Il2cpp.MainType
+                },
+                { -- EnumType [9]
+                    address = ClassInfo.ClassInfoAddress + self.EnumType,
+                    flags = gg.TYPE_BYTE
                 }
             })
             local ClassName = ClassInfo.ClassName or Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[1].value))
@@ -782,7 +1007,8 @@ Il2cpp = {
                 Fields = (_ClassInfo[3].value > 0 and Config.FieldsDump) and self:GetClassFields(Il2cpp.FixValue(_ClassInfo[5].value), _ClassInfo[3].value, ClassName) or nil,
                 Parent = _ClassInfo[6].value ~= 0 and {ClassAddress = string.format('%X', Il2cpp.FixValue(_ClassInfo[6].value)), ClassName = self:GetClassName(_ClassInfo[6].value)} or nil,
                 ClassNameSpace = Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[7].value)),
-                StaticFieldData = _ClassInfo[8].value ~= 0 and Il2cpp.FixValue(_ClassInfo[8].value) or nil
+                StaticFieldData = _ClassInfo[8].value ~= 0 and Il2cpp.FixValue(_ClassInfo[8].value) or nil,
+                IsEnum = ((_ClassInfo[9].value >> self.EnumRsh) & 1) == 1
             }, {
                 __index = Il2cpp.ClassInfoApi
             })
@@ -1146,11 +1372,7 @@ Il2cpp = setmetatable(Il2cpp, {
             self.globalMetadataStart, self.globalMetadataEnd = FindGlobalMetaData()
         end
 
-        if params[3] then
-            Il2cppApi:ChooseIl2cppVersion(params[3])
-        else
-            Il2cppApi:ChooseIl2cppVersion(gg.getValues({{address = self.globalMetadataStart + 0x4, flags = gg.TYPE_DWORD}})[1].value)
-        end
+        VersionEngine:ChooseVersion(params[3])
 
         Il2cppMemory.Methods = {}
         Il2cppMemory.Classes = {}
