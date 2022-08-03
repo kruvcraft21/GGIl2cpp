@@ -220,6 +220,8 @@ local globalmetadata = {start = 0x9888, ['end'] = 0x14888}
 Il2cpp(libil2cpp, globalmetadata) -- in this case, "Il2cpp()" and will remember the location "libil2cpp.so " and "global-metadata.dat", which was passed to him.
 
 Il2cpp(nil, nil, 27) -- in this case , the method will find "libil2cpp.so" and "global-metadata.dat" and will remember the "Il2cpp" version
+
+Il2cpp(nil, nil, nil, globalmetadata.start) -- in this case , the method will find "libil2cpp.so ", and "global-metadata.dat", and the "Il2cpp" version, and will remember "globalMetadataHeader"
 ```
 
 It is worth talking about processing the results of the module.
