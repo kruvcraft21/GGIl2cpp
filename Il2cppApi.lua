@@ -13,6 +13,7 @@ local platform, sdk = gg.getTargetInfo().x64, gg.getTargetInfo().targetSdkVersio
 ---@field ClassNameSpace string
 ---@field StaticFieldData number | nil
 ---@field IsEnum boolean
+---@field TypeMetadataHandle number
 ---@field GetFieldWithName fun(self : ClassInfo, name : string) : FieldInfo | nil @Get FieldInfo by Field Name. If Fields weren't dumped, then this function return `nil`. Also, if Field isn't found by name, then function will return `nil`
 ---@field GetMethodsWithName fun(self : ClassInfo, name : string) : MethodInfo[] | nil @Get MethodInfo[] by MethodName. If Methods weren't dumped, then this function return `nil`. Also, if Method isn't found by name, then function will return `table with zero size`
 
@@ -36,6 +37,9 @@ local platform, sdk = gg.getTargetInfo().x64, gg.getTargetInfo().targetSdkVersio
 ---@field typeDefinitionsSize number
 ---@field typeDefinitionsOffset number
 ---@field stringOffset number
+---@field fieldDefaultValuesOffset number
+---@field fieldDefaultValuesSize number
+---@field fieldAndParameterDefaultValueDataOffset number
 ---@field version number
 
 ---@class ClassApi
@@ -51,6 +55,7 @@ local platform, sdk = gg.getTargetInfo().x64, gg.getTargetInfo().targetSdkVersio
 ---@field StaticFieldDataOffset number
 ---@field EnumType number
 ---@field EnumRsh number
+---@field TypeMetadataHandle number
 
 ---@class ClassesMemory
 ---@field Config ClassConfig
@@ -106,6 +111,7 @@ local platform, sdk = gg.getTargetInfo().x64, gg.getTargetInfo().targetSdkVersio
 ---@field ClassApiStaticFieldDataOffset number
 ---@field ClassApiEnumType number
 ---@field ClassApiEnumRsh number
+---@field ClassApiTypeMetadataHandle number
 ---@field MethodsApiClassOffset number
 ---@field MethodsApiNameOffset number
 ---@field MethodsApiParamCount number
@@ -113,12 +119,19 @@ local platform, sdk = gg.getTargetInfo().x64, gg.getTargetInfo().targetSdkVersio
 ---@field typeDefinitionsSize number
 ---@field typeDefinitionsOffset number
 ---@field stringOffset number
+---@field fieldDefaultValuesOffset number
+---@field fieldDefaultValuesSize number
+---@field fieldAndParameterDefaultValueDataOffset number
 ---@field TypeApiType number
+---@field Il2CppTypeDefinitionApifieldStart number
 
 ---@class ClassConfig
 ---@field Class number | string @Class Name or Address Class
 ---@field FieldsDump boolean
 ---@field MethodsDump boolean
+
+---@class Il2CppTypeDefinitionApi
+---@field fieldStart number
 
 Protect = {
     ErrorHandler = function(err)
@@ -255,6 +268,7 @@ VersionEngine = {
             Il2cpp.ClassApi.StaticFieldDataOffset = api.ClassApiStaticFieldDataOffset
             Il2cpp.ClassApi.EnumType = api.ClassApiEnumType
             Il2cpp.ClassApi.EnumRsh = api.ClassApiEnumRsh
+            Il2cpp.ClassApi.TypeMetadataHandle = api.ClassApiTypeMetadataHandle
 
             Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
             Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
@@ -262,18 +276,46 @@ VersionEngine = {
             Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
 
             Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
-            Il2cpp.GlobalMetadataApi.typeDefinitionsOffset = api.typeDefinitionsOffset
-            Il2cpp.GlobalMetadataApi.stringOffset = api.stringOffset
             Il2cpp.GlobalMetadataApi.version = version
 
+            local consts = gg.getValues({
+                { -- [1] 
+                    address = Il2cpp.globalMetadataHeader + api.typeDefinitionsOffset,
+                    flags = gg.TYPE_DWORD
+                },
+                { -- [2]
+                    address = Il2cpp.globalMetadataHeader + api.stringOffset,
+                    flags = gg.TYPE_DWORD,
+                },
+                { -- [3]
+                    address = Il2cpp.globalMetadataHeader + api.fieldDefaultValuesOffset,
+                    flags = gg.TYPE_DWORD,
+                },
+                { -- [4]
+                    address = Il2cpp.globalMetadataHeader + api.fieldDefaultValuesSize,
+                    flags = gg.TYPE_DWORD
+                },
+                { -- [5]
+                    address = Il2cpp.globalMetadataHeader + api.fieldAndParameterDefaultValueDataOffset,
+                    flags = gg.TYPE_DWORD
+                }
+            })
+            Il2cpp.GlobalMetadataApi.typeDefinitionsOffset = consts[1].value
+            Il2cpp.GlobalMetadataApi.stringOffset = consts[2].value
+            Il2cpp.GlobalMetadataApi.fieldDefaultValuesOffset = consts[3].value
+            Il2cpp.GlobalMetadataApi.fieldDefaultValuesSize = consts[4].value
+            Il2cpp.GlobalMetadataApi.fieldAndParameterDefaultValueDataOffset = consts[5].value
+
             Il2cpp.TypeApi.Type = api.TypeApiType
+
+            Il2cpp.Il2CppTypeDefinitionApi.fieldStart = api.Il2CppTypeDefinitionApifieldStart
         else
             error('Not support this il2cpp version')
         end 
     end,
 }
 
----@type Il2cppApi[]
+---@type table<number, Il2cppApi>
 Il2cppApi = {
     [24.1] = {
         FieldApiOffset = platform and 0x18 or 0xC,
@@ -291,6 +333,7 @@ Il2cppApi = {
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         ClassApiEnumType = platform and 0x126 or 0xBE,
         ClassApiEnumRsh = 3,
+        ClassApiTypeMetadataHandle = platform and 0x68 or 0x34,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -298,7 +341,11 @@ Il2cppApi = {
         typeDefinitionsSize = 100,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = platform and 0xA or 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x2C,
     },
     [24] = {
         FieldApiOffset = platform and 0x18 or 0xC,
@@ -316,6 +363,7 @@ Il2cppApi = {
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         ClassApiEnumType = platform and 0x129 or 0xC1,
         ClassApiEnumRsh = 2,
+        ClassApiTypeMetadataHandle = platform and 0x68 or 0x34,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4E or 0x2E,
@@ -323,7 +371,11 @@ Il2cppApi = {
         typeDefinitionsSize = 104,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = platform and 0xA or 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x30,
     },
     [24.2] = {
         FieldApiOffset = platform and 0x18 or 0xC,
@@ -341,6 +393,7 @@ Il2cppApi = {
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         ClassApiEnumType = platform and 0x12e or 0xBA,
         ClassApiEnumRsh = 3,
+        ClassApiTypeMetadataHandle = platform and 0x68 or 0x34,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -348,7 +401,11 @@ Il2cppApi = {
         typeDefinitionsSize = 92,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = platform and 0xA or 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x24,
     },
     [24.3] = {
         FieldApiOffset = platform and 0x18 or 0xC,
@@ -366,6 +423,7 @@ Il2cppApi = {
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         ClassApiEnumType = platform and 0x12e or 0xBA,
         ClassApiEnumRsh = 3,
+        ClassApiTypeMetadataHandle = platform and 0x68 or 0x34,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -373,7 +431,11 @@ Il2cppApi = {
         typeDefinitionsSize = 92,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = platform and 0xA or 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x24,
     },
     [24.4] = {
         FieldApiOffset = platform and 0x18 or 0xC,
@@ -391,6 +453,7 @@ Il2cppApi = {
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         ClassApiEnumType = platform and 0x12e or 0xBA,
         ClassApiEnumRsh = 3,
+        ClassApiTypeMetadataHandle = platform and 0x68 or 0x34,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -398,7 +461,11 @@ Il2cppApi = {
         typeDefinitionsSize = 92,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = platform and 0xA or 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x24,
     },
     [24.5] = {
         FieldApiOffset = platform and 0x18 or 0xC,
@@ -416,6 +483,7 @@ Il2cppApi = {
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         ClassApiEnumType = platform and 0x12e or 0xBA,
         ClassApiEnumRsh = 3,
+        ClassApiTypeMetadataHandle = platform and 0x68 or 0x34,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -423,7 +491,11 @@ Il2cppApi = {
         typeDefinitionsSize = 92,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = platform and 0xA or 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x24,
     },
     [27] = {
         FieldApiOffset = platform and 0x18 or 0xC,
@@ -441,6 +513,7 @@ Il2cppApi = {
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         ClassApiEnumType = platform and 0x132 or 0xBA,
         ClassApiEnumRsh = 3,
+        ClassApiTypeMetadataHandle = platform and 0x68 or 0x34,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -448,7 +521,11 @@ Il2cppApi = {
         typeDefinitionsSize = 88,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = platform and 0xA or 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x20,
     },
     [27.1] = {
         FieldApiOffset = platform and 0x18 or 0xC,
@@ -466,6 +543,7 @@ Il2cppApi = {
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         ClassApiEnumType = platform and 0x132 or 0xBA,
         ClassApiEnumRsh = 3,
+        ClassApiTypeMetadataHandle = platform and 0x68 or 0x34,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -473,7 +551,11 @@ Il2cppApi = {
         typeDefinitionsSize = 88,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = platform and 0xA or 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x20,
     },
     [27.2] = {
         FieldApiOffset = platform and 0x18 or 0xC,
@@ -491,6 +573,7 @@ Il2cppApi = {
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         ClassApiEnumType = platform and 0x132 or 0xBA,
         ClassApiEnumRsh = 2,
+        ClassApiTypeMetadataHandle = platform and 0x68 or 0x34,
         MethodsApiClassOffset = platform and 0x18 or 0xC,
         MethodsApiNameOffset = platform and 0x10 or 0x8,
         MethodsApiParamCount = platform and 0x4A or 0x2A,
@@ -498,7 +581,11 @@ Il2cppApi = {
         typeDefinitionsSize = 88,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = platform and 0xA or 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x20,
     },
     [29] = {
         FieldApiOffset = platform and 0x18 or 0xC,
@@ -516,6 +603,7 @@ Il2cppApi = {
         ClassApiStaticFieldDataOffset = platform and 0xB8 or 0x5C,
         ClassApiEnumType = platform and 0x132 or 0xBA,
         ClassApiEnumRsh = 2,
+        ClassApiTypeMetadataHandle = platform and 0x68 or 0x34,
         MethodsApiClassOffset = platform and 0x20 or 0x10,
         MethodsApiNameOffset = platform and 0x18 or 0xC,
         MethodsApiParamCount = platform and 0x52 or 0x2E,
@@ -523,7 +611,11 @@ Il2cppApi = {
         typeDefinitionsSize = 88,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = platform and 0xA or 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x20,
     }
 }
 
@@ -581,6 +673,7 @@ Il2cpp = {
     il2cppEnd = 0,
     globalMetadataStart = 0,
     globalMetadataEnd = 0,
+    globalMetadataHeader = 0,
     --- Patch `Bytescodes` to `add`
     ---
     --- Example:
@@ -714,24 +807,63 @@ Il2cpp = {
         return FindsResult
     end,
     MainType = platform and gg.TYPE_QWORD or gg.TYPE_DWORD,
+    ---@type Il2CppTypeDefinitionApi
+    Il2CppTypeDefinitionApi = {},
     ---@type GlobalMetadataApi
     GlobalMetadataApi = {
         ---@param self GlobalMetadataApi
         ---@param index number
         GetStringFromIndex = function(self, index)
-            local stringDefinitions = Il2cpp.globalMetadataStart + gg.getValues({{address = Il2cpp.globalMetadataStart + self.stringOffset, flags = gg.TYPE_DWORD}})[1].value
+            local stringDefinitions = Il2cpp.globalMetadataStart + self.stringOffset
             return Il2cpp.Utf8ToString(stringDefinitions + index)
         end,
         ---@param self GlobalMetadataApi
         GetClassNameFromIndex = function(self, index)
             if (self.version < 27) then
-                local typeDefinitions = Il2cpp.globalMetadataStart + gg.getValues({{address = Il2cpp.globalMetadataStart + self.typeDefinitionsOffset, flags = gg.TYPE_DWORD}})[1].value
+                local typeDefinitions = Il2cpp.globalMetadataStart + self.typeDefinitionsOffset
                 index = (self.typeDefinitionsSize * index) + typeDefinitions
             else
                 index = Il2cpp.FixValue(index)
             end
             local typeDefinition = gg.getValues({{address = index, flags = gg.TYPE_DWORD}})[1].value
             return self:GetStringFromIndex(typeDefinition)
+        end,
+        ---@param self GlobalMetadataApi
+        ---@param dataIndex number
+        GetFieldOrParameterDefalutValue = function(self, dataIndex)
+            return gg.getValues({{address = self.fieldAndParameterDefaultValueDataOffset + Il2cpp.globalMetadataStart + dataIndex, flags = gg.TYPE_WORD}})[1].value
+        end,
+        ---@param self GlobalMetadataApi
+        ---@param index string
+        GetIl2CppFieldDefaultValue = function(self, index)
+            gg.clearResults()
+            gg.setRanges(0)
+            gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_OTHER | gg.REGION_C_ALLOC)
+            gg.searchNumber(
+                tostring(index), 
+                gg.TYPE_DWORD, 
+                false, 
+                gg.SIGN_EQUAL, 
+                Il2cpp.globalMetadataStart + self.fieldDefaultValuesOffset, 
+                Il2cpp.globalMetadataStart + self.fieldDefaultValuesOffset + self.fieldDefaultValuesSize
+            )
+            if gg.getResultsCount() > 0 then
+                local Il2CppFieldDefaultValue = gg.getResults(1)
+                gg.clearResults()
+                return Il2CppFieldDefaultValue
+            end
+            return {}
+        end,
+        ---@param self GlobalMetadataApi
+        ---@param index number
+        ---@return any | nil
+        GetDefaultFieldValue = function(self, index)
+            local Il2CppFieldDefaultValue = self:GetIl2CppFieldDefaultValue(tostring(index))
+            if #Il2CppFieldDefaultValue > 0 then
+                local dataIndex = gg.getValues({{address = Il2CppFieldDefaultValue[1].address + 8, flags = gg.TYPE_DWORD}})[1].value
+                return self:GetFieldOrParameterDefalutValue(dataIndex)
+            end
+            return nil
         end
     },
     ---@type TypeApi
@@ -794,36 +926,36 @@ Il2cpp = {
     ---@type FieldApi
     FieldApi = {
         ---@param self FieldApi
-        ---@param FieldInfo FieldInfoRaw
-        UnpackFieldInfo = function(self, FieldInfo)
+        ---@param FieldInfoAddress number
+        UnpackFieldInfo = function(self, FieldInfoAddress)
             return {
                 { -- Field Name
-                    address = FieldInfo.FieldInfoAddress,
+                    address = FieldInfoAddress,
                     flags = Il2cpp.MainType
                 },
                 { -- Offset Field
-                    address = FieldInfo.FieldInfoAddress + self.Offset,
+                    address = FieldInfoAddress + self.Offset,
                     flags = gg.TYPE_WORD
                 },
                 { -- Field type
-                    address = FieldInfo.FieldInfoAddress + self.Type,
+                    address = FieldInfoAddress + self.Type,
                     flags = Il2cpp.MainType
                 },
                 { -- Class address
-                    address = FieldInfo.FieldInfoAddress + self.ClassOffset,
+                    address = FieldInfoAddress + self.ClassOffset,
                     flags = Il2cpp.MainType
                 }
-            },
-            {
-                ClassName = FieldInfo.ClassName or nil,
             }
         end,
         ---@param self FieldApi
-        ---@param _FieldsInfo FieldInfo[]
-        DecodeFieldsInfo = function(self, _FieldsInfo, FieldsInfo)
-            for i = 1, #_FieldsInfo do
-                local index = (i - 1) << 2
-                local TypeInfo = Il2cpp.FixValue(FieldsInfo[index + 3].value)
+        DecodeFieldsInfo = function(self, FieldsInfo, ClassCharacteristic)
+            local fieldStart, index, _FieldsInfo = nil, 0, {}
+            if ClassCharacteristic.IsEnum then
+                fieldStart = gg.getValues({{address = ClassCharacteristic.TypeMetadataHandle + Il2cpp.Il2CppTypeDefinitionApi.fieldStart, flags = gg.TYPE_DWORD}})[1].value
+            end
+            for i = 1, #FieldsInfo, 4 do
+                index = index + 1
+                local TypeInfo = Il2cpp.FixValue(FieldsInfo[i + 2].value)
                 local _TypeInfo = gg.getValues({
                     {
                         address = TypeInfo + self.Type,
@@ -838,15 +970,21 @@ Il2cpp = {
                         flags = Il2cpp.MainType
                     }
                 })
-                _FieldsInfo[i] = {
-                    ClassName = _FieldsInfo[i].ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[index + 4].value),
-                    ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[index + 4].value)),
-                    FieldName = Il2cpp.Utf8ToString(Il2cpp.FixValue(FieldsInfo[index + 1].value)),
-                    Offset = string.format('%X', FieldsInfo[index + 2].value),
+                local DefaultValue = nil
+                if ClassCharacteristic.IsEnum and FieldsInfo[i + 1].value == 0 then
+                    DefaultValue = Il2cpp.GlobalMetadataApi:GetDefaultFieldValue(index + fieldStart - 1)
+                end
+                _FieldsInfo[index] = {
+                    ClassName = ClassCharacteristic.ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[i + 3].value),
+                    ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[i + 3].value)),
+                    FieldName = Il2cpp.Utf8ToString(Il2cpp.FixValue(FieldsInfo[i].value)),
+                    Offset = string.format('%X', FieldsInfo[i + 1].value),
                     IsStatic = (_TypeInfo[1].value & 0x10) ~= 0,
-                    Type = Il2cpp.TypeApi:GetTypeName(_TypeInfo[2].value, _TypeInfo[3].value)
+                    Type = Il2cpp.TypeApi:GetTypeName(_TypeInfo[2].value, _TypeInfo[3].value),
+                    DefaultValue = DefaultValue
                 }
             end
+            return _FieldsInfo
         end
     },
     ClassInfoApi = {
@@ -874,7 +1012,7 @@ Il2cpp = {
                         flags = gg.TYPE_WORD
                     }
                 })
-                self.Fields = Il2cpp.ClassApi:GetClassFields(Il2cpp.FixValue(_ClassInfo[1].value), _ClassInfo[2].value, self.ClassName)
+                self.Fields = Il2cpp.ClassApi:GetClassFields(Il2cpp.FixValue(_ClassInfo[1].value), _ClassInfo[2].value, {ClassName = self.ClassName, IsEnum = self.IsEnum, TypeMetadataHandle = self.TypeMetadataHandle})
                 return self:GetFieldWithName(name)
             end
             return nil
@@ -938,7 +1076,7 @@ Il2cpp = {
             Il2cpp.MethodsApi:DecodeMethodsInfo(_MethodsInfo, MethodsInfo)
             return _MethodsInfo
         end,
-        GetClassFields = function(self, FieldsLink, Count, ClassName)
+        GetClassFields = function(self, FieldsLink, Count, ClassCharacteristic)
             local FieldsInfo, _FieldsInfo = {}, {}
             for i = 0, Count - 1 do
                 _FieldsInfo[#_FieldsInfo + 1] = {
@@ -949,11 +1087,11 @@ Il2cpp = {
             _FieldsInfo = gg.getValues(_FieldsInfo)
             for i = 1, #_FieldsInfo do
                 local FieldInfo
-                FieldInfo, _FieldsInfo[i] = Il2cpp.FieldApi:UnpackFieldInfo({FieldInfoAddress = Il2cpp.FixValue(_FieldsInfo[i].address), ClassName = ClassName})
+                FieldInfo = Il2cpp.FieldApi:UnpackFieldInfo(Il2cpp.FixValue(_FieldsInfo[i].address))
                 table.move(FieldInfo, 1, #FieldInfo, #FieldsInfo + 1, FieldsInfo)
             end
             FieldsInfo = gg.getValues(FieldsInfo)
-            Il2cpp.FieldApi:DecodeFieldsInfo(_FieldsInfo, FieldsInfo)
+            _FieldsInfo = Il2cpp.FieldApi:DecodeFieldsInfo(FieldsInfo, ClassCharacteristic)
             return _FieldsInfo
         end,
         ---@param self ClassApi
@@ -997,18 +1135,24 @@ Il2cpp = {
                 { -- EnumType [9]
                     address = ClassInfo.ClassInfoAddress + self.EnumType,
                     flags = gg.TYPE_BYTE
+                },
+                { -- TypeMetadataHandle [10]
+                    address = ClassInfo.ClassInfoAddress + self.TypeMetadataHandle,
+                    flags = Il2cpp.MainType
                 }
             })
             local ClassName = ClassInfo.ClassName or Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[1].value))
+            local ClassCharacteristic = {ClassName = ClassName, IsEnum = ((_ClassInfo[9].value >> self.EnumRsh) & 1) == 1, TypeMetadataHandle = Il2cpp.FixValue(_ClassInfo[10].value)}
             return setmetatable({
                 ClassName = ClassName,
                 ClassAddress = string.format('%X', Il2cpp.FixValue(ClassInfo.ClassInfoAddress)),
                 Methods = (_ClassInfo[2].value > 0 and Config.MethodsDump) and self:GetClassMethods(Il2cpp.FixValue(_ClassInfo[4].value), _ClassInfo[2].value, ClassName) or nil,
-                Fields = (_ClassInfo[3].value > 0 and Config.FieldsDump) and self:GetClassFields(Il2cpp.FixValue(_ClassInfo[5].value), _ClassInfo[3].value, ClassName) or nil,
+                Fields = (_ClassInfo[3].value > 0 and Config.FieldsDump) and self:GetClassFields(Il2cpp.FixValue(_ClassInfo[5].value), _ClassInfo[3].value, ClassCharacteristic) or nil,
                 Parent = _ClassInfo[6].value ~= 0 and {ClassAddress = string.format('%X', Il2cpp.FixValue(_ClassInfo[6].value)), ClassName = self:GetClassName(_ClassInfo[6].value)} or nil,
                 ClassNameSpace = Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[7].value)),
                 StaticFieldData = _ClassInfo[8].value ~= 0 and Il2cpp.FixValue(_ClassInfo[8].value) or nil,
-                IsEnum = ((_ClassInfo[9].value >> self.EnumRsh) & 1) == 1
+                IsEnum = ClassCharacteristic.IsEnum,
+                TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle
             }, {
                 __index = Il2cpp.ClassInfoApi
             })
@@ -1092,6 +1236,9 @@ Il2cpp = {
                 else 
                     gg.loadResults({r[j]})
                     gg.searchPointer(0)
+                end
+                if gg.getResultsCount() <= 0 and platform and sdk >= 30 then
+                    gg.searchNumber(tostring(tonumber(Il2cpp.FixValue(r[j].address), 16) | 0xB400000000000000), gg.TYPE_QWORD)
                 end
                 local MethodsInfo = gg.getResults(gg.getResultsCount())
                 gg.clearResults()
@@ -1311,22 +1458,22 @@ Il2cpp = {
 
 Il2cpp = setmetatable(Il2cpp, {
     ---@param self Il2cpp
-    __call = function(self, ...)
+    __call = function(self, libilcpp, globalMetadata, il2cppVersion, globalMetadataHeader)
         
         local function FindGlobalMetaData()
             local globalMetadata = gg.getRangesList('global-metadata.dat')
             gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_OTHER)
-            if (#globalMetadata ~= 0) then gg.searchNumber(':MonoBehaviour',gg.TYPE_BYTE,false,gg.SIGN_EQUAL,globalMetadata[1].start,globalMetadata[#globalMetadata]['end']) end
+            if (#globalMetadata ~= 0) then gg.searchNumber(':EnsureCapacity',gg.TYPE_BYTE,false,gg.SIGN_EQUAL,globalMetadata[1].start,globalMetadata[#globalMetadata]['end']) end
             if (gg.getResultsCount() == 0 or #globalMetadata == 0) then
                 globalMetadata = {}
                 gg.clearList()
-                gg.searchNumber(':MonoBehaviour', gg.TYPE_BYTE)
-                gg.refineNumber(':M', gg.TYPE_BYTE)
-                    local MonoBehaviour = gg.getResults(gg.getResultsCount())
+                gg.searchNumber(':EnsureCapacity', gg.TYPE_BYTE)
+                gg.refineNumber(':E', gg.TYPE_BYTE)
+                    local EnsureCapacity = gg.getResults(gg.getResultsCount())
                     gg.clearResults()
                     for k,v in ipairs(gg.getRangesList()) do
                         if (v.state == 'Ca' or v.state == 'A' or v.state == 'Cd' or v.state == 'Cb' or v.state == 'Ch' or v.state == 'O') then
-                            for key, val in ipairs(MonoBehaviour) do
+                            for key, val in ipairs(EnsureCapacity) do
                                 globalMetadata[#globalMetadata + 1] = (Il2cpp.FixValue(v.start) <= Il2cpp.FixValue(val.address) and Il2cpp.FixValue(val.address) < Il2cpp.FixValue(v['end'])) 
                                     and v 
                                     or nil
@@ -1356,23 +1503,21 @@ Il2cpp = setmetatable(Il2cpp, {
             return il2cpp[1].start, il2cpp[#il2cpp]['end']
         end
 
-        -- self = Il2cpp
-
-        local params = {...}
-
-        if params[1] then
-            self.il2cppStart, self.il2cppEnd = params[1].start, params[1]['end']
+        if libilcpp then
+            self.il2cppStart, self.il2cppEnd = libilcpp.start, libilcpp['end']
         else
             self.il2cppStart, self.il2cppEnd = FindIl2cpp()
         end
 
-        if params[2] then
-            self.globalMetadataStart, self.globalMetadataEnd = params[2].start, params[2]['end']
+        if globalMetadata then
+            self.globalMetadataStart, self.globalMetadataEnd = globalMetadata.start, globalMetadata['end']
         else
             self.globalMetadataStart, self.globalMetadataEnd = FindGlobalMetaData()
         end
 
-        VersionEngine:ChooseVersion(params[3])
+        self.globalMetadataHeader = globalMetadataHeader and globalMetadataHeader or self.globalMetadataStart
+
+        VersionEngine:ChooseVersion(il2cppVersion)
 
         Il2cppMemory.Methods = {}
         Il2cppMemory.Classes = {}
