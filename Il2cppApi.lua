@@ -831,7 +831,7 @@ Il2cpp = {
         ---@param self GlobalMetadataApi
         ---@param dataIndex number
         GetFieldOrParameterDefalutValue = function(self, dataIndex)
-            return gg.getValues({{address = self.fieldAndParameterDefaultValueDataOffset + Il2cpp.globalMetadataStart + dataIndex, flags = gg.TYPE_WORD}})[1].value
+            return self.fieldAndParameterDefaultValueDataOffset + Il2cpp.globalMetadataStart + dataIndex
         end,
         ---@param self GlobalMetadataApi
         ---@param index string
@@ -840,7 +840,7 @@ Il2cpp = {
             gg.setRanges(0)
             gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_OTHER | gg.REGION_C_ALLOC)
             gg.searchNumber(
-                tostring(index), 
+                index, 
                 gg.TYPE_DWORD, 
                 false, 
                 gg.SIGN_EQUAL, 
@@ -854,6 +854,11 @@ Il2cpp = {
             end
             return {}
         end,
+        ---@param Address number
+        ---@param ggType number @gg.TYPE_
+        ReadNumberConst = function(Address, ggType)
+            return gg.getValues({{address = Address, flags = ggType}})[1].value
+        end,
         ---@param self GlobalMetadataApi
         ---@param index number
         ---@return any | nil
@@ -861,7 +866,8 @@ Il2cpp = {
             local Il2CppFieldDefaultValue = self:GetIl2CppFieldDefaultValue(tostring(index))
             if #Il2CppFieldDefaultValue > 0 then
                 local dataIndex = gg.getValues({{address = Il2CppFieldDefaultValue[1].address + 8, flags = gg.TYPE_DWORD}})[1].value
-                return self:GetFieldOrParameterDefalutValue(dataIndex)
+                local blob = self:GetFieldOrParameterDefalutValue(dataIndex)
+                return self.ReadNumberConst(blob, gg.TYPE_WORD)
             end
             return nil
         end
