@@ -235,8 +235,8 @@ VersionEngine = {
         local versionTable = gg.getResults(1)
         gg.clearResults()
         local verisonName = Il2cpp.Utf8ToString(versionTable[1].address)
-        local i, j = string.find(verisonName, ".+f")
-        if j then verisonName = string.sub(verisonName, i,j - 1) end
+        local i, j = string.find(verisonName, "f")
+        if j then verisonName = string.sub(verisonName, 1, j - 1) end
         return string.gmatch(verisonName, "([^%.]+)%.([^%.]+)%.([^%.]+)")()
     end,
     ---@param self VersionEngine
