@@ -1,6 +1,6 @@
 import { bundle } from 'luabundle'
 
-const fs = require('fs')
+import fs from 'fs'
 
 const bundledLua = bundle('./index.lua', {
     metadata: false,
