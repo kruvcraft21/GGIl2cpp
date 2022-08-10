@@ -1,6 +1,6 @@
 import { bundle } from 'luabundle'
-
 import fs from 'fs'
+import path from "path"
 
 const bundledLua = bundle('./index.lua', {
     metadata: false,
@@ -8,7 +8,9 @@ const bundledLua = bundle('./index.lua', {
     isolate : true
 })
 
-fs.writeFile("build\\Il2cppApi.lua", bundledLua, (err : any) => {
+const buildPath = path.normalize("build/Il2cppApi.lua")
+
+fs.writeFile(buildPath, bundledLua, (err : any) => {
     if (err) throw err
-    console.log("Il2cppApi.lua -> \n" + fs.readFileSync("build\\Il2cppApi.lua"))
+    console.log("Il2cppApi.lua -> \n" + fs.readFileSync(buildPath))
 })
