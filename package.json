@@ -1,0 +1,16 @@
+{
+  "name": "ggil2cpp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "build.ts",
+  "scripts": {
+    "start": "ts-node build.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^18.6.5",
+    "luabundle": "^1.6.0"
+  }
+}

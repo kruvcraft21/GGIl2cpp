@@ -1,5 +1,4 @@
--- io.open('il2cppapi.lua',"w+"):write(gg.makeRequest("https://raw.githubusercontent.com/kruvcraft21/GGIl2cpp/master/Il2cppApi.lua").content):close()
-io.open('il2cppapi.lua',"w+"):write(gg.makeRequest("https://www.dropbox.com/s/aordycv4ravcruo/il2cppapi.lua?dl=1").content):close()
+io.open('il2cppapi.lua',"w+"):write(gg.makeRequest("https://raw.githubusercontent.com/kruvcraft21/GGIl2cpp/master/Il2cppApi.lua").content):close()
 require('il2cppapi')
 os.remove('il2cppapi.lua')
 
@@ -53,3 +52,5 @@ for k,v in ipairs(TestClasses) do
         end
     end
 end
+
+os.exit()
