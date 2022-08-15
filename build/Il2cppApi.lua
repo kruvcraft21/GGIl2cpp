@@ -74,17 +74,6 @@ require("il2cpp")
 ---@field Type number
 ---@field ClassOffset number
 
----@class TypeApi
----@field Type number
-
----@class GlobalMetadataApi
----@field typeDefinitionsSize number
----@field typeDefinitionsOffset number
----@field stringOffset number
----@field fieldDefaultValuesOffset number
----@field fieldDefaultValuesSize number
----@field fieldAndParameterDefaultValueDataOffset number
----@field version number
 
 ---@class ClassApi
 ---@field NameOffset number
@@ -100,16 +89,21 @@ require("il2cpp")
 ---@field EnumType number
 ---@field EnumRsh number
 ---@field TypeMetadataHandle number
+---@field GetClassName fun(self : ClassApi, ClassAddress : number) : string
+---@field GetClassMethods fun(self : ClassApi, MethodsLink : number, Count : number, ClassName : string | nil) : MethodInfo[]
+
 
 ---@class ClassesMemory
 ---@field Config ClassConfig
 ---@field SearchResult ClassInfo[]
+
 
 ---@class MethodsApi
 ---@field ClassOffset number
 ---@field NameOffset number
 ---@field ParamCount number
 ---@field ReturnType number
+
 
 ---@class FieldInfo
 ---@field ClassName string 
@@ -118,6 +112,9 @@ require("il2cpp")
 ---@field Offset string
 ---@field IsStatic boolean
 ---@field Type string
+---@field IsConst boolean
+---@field GetConstValue fun(self : FieldInfo) : nil | string | number
+
 
 ---@class MethodInfoRaw
 ---@field MethodName string | nil
@@ -126,8 +123,10 @@ require("il2cpp")
 ---@field ClassName string | nil
 ---@field MethodAddress number
 
+
 ---@class ErrorSearch
 ---@field Error string
+
 
 ---@class MethodInfo : MethodInfoRaw
 ---@field MethodName string
@@ -138,6 +137,7 @@ require("il2cpp")
 ---@field ClassAddress string
 ---@field ParamCount number
 ---@field ReturnType string
+
 
 ---@class Il2cppApi
 ---@field FieldApiOffset number
@@ -168,14 +168,30 @@ require("il2cpp")
 ---@field fieldAndParameterDefaultValueDataOffset number
 ---@field TypeApiType number
 ---@field Il2CppTypeDefinitionApifieldStart number
+---@field MetadataRegistrationApitypes number
+
 
 ---@class ClassConfig
 ---@field Class number | string @Class Name or Address Class
 ---@field FieldsDump boolean
 ---@field MethodsDump boolean
 
+
 ---@class Il2CppTypeDefinitionApi
 ---@field fieldStart number
+
+
+
+
+
+---@class Il2cppMemory
+---@field Methods table<number | string, MethodInfo[] | ErrorSearch>
+---@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
+---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
+---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
+---@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
+---@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : ClassConfig) : ClassInfo[] | nil | ErrorSearch
+---@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
 
 Protect = {
     ErrorHandler = function(err)
@@ -185,6 +201,21 @@ Protect = {
         return ({xpcall(fun, self.ErrorHandler, ...)})[2]
     end
 }
+
+return Il2cpp
+end)
+__bundle_register("il2cpp", function(require, _LOADED, __bundle_register, __bundle_modules)
+local Il2cppMemory = require("until.il2cppmemory")
+
+local VersionEngine = require("until.version")
+
+local AndroidInfo = require("until.androidinfo")
+
+local Sercher = require("until.universalsearcher")
+
+function GetTypeClassName(index)
+    return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
+end
 
 function getAlfUtf16()
     local Utf16 = {}
@@ -199,23 +230,6 @@ function getAlfUtf16()
     return Utf16
 end
 
-function GetTypeClassName(index)
-    return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
-end
-
-return Il2cpp
-end)
-__bundle_register("il2cpp", function(require, _LOADED, __bundle_register, __bundle_modules)
----@type Il2cppMemory
-local Il2cppMemory = require("until.il2cppmemory")
-
----@type VersionEngine
-local VersionEngine = require("until.version")
-
-local AndroidInfo = require("until.androidinfo")
-
-local Sercher = require("until.universalsearcher")
-
 ---@class Il2cpp
 Il2cpp = {
     il2cppStart = 0,
@@ -224,14 +238,18 @@ Il2cpp = {
     globalMetadataEnd = 0,
     globalMetadataHeader = 0,
     MainType = AndroidInfo.platform and gg.TYPE_QWORD or gg.TYPE_DWORD,
+    pointSize = AndroidInfo.platform and 8 or 4,
     ---@type Il2CppTypeDefinitionApi
     Il2CppTypeDefinitionApi = {},
+    MetadataRegistrationApi = require("il2cppstruct.metadataRegistration"),
     TypeApi = require("il2cppstruct.type"),
     MethodsApi = require("il2cppstruct.method"),
     GlobalMetadataApi = require("il2cppstruct.globalmetadata"),
     FieldApi = require("il2cppstruct.field"),
     ClassApi = require("il2cppstruct.class"),
     ObjectApi = require("il2cppstruct.object"),
+    ClassInfoApi = require("il2cppstruct.api.classinfo"),
+    FieldInfoApi = require("il2cppstruct.api.fieldinfo"),
     
     --- Patch `Bytescodes` to `add`
     ---
@@ -324,18 +342,32 @@ Il2cpp = {
 
 
     ---@param Address number
+    ---@param length? number
     ---@return string
-    Utf8ToString = function(Address)
-        local chars, char = {}, {
-            address = Address,
-            flags = gg.TYPE_BYTE
-        }
-        repeat
-            _char = gg.getValues({char})[1].value
-            chars[#chars + 1] = string.char(_char & 0xFF)
-            char.address = char.address + 0x1
-        until _char <= 0
-        return table.concat(chars, "", 1, #chars - 1)
+    Utf8ToString = function(Address, length)
+        if not length then
+            local chars, char = {}, {
+                address = Address,
+                flags = gg.TYPE_BYTE
+            }
+            repeat
+                _char = gg.getValues({char})[1].value
+                chars[#chars + 1] = string.char(_char & 0xFF)
+                char.address = char.address + 0x1
+            until _char <= 0
+            return table.concat(chars, "", 1, #chars - 1)
+        else
+            local chars, char = {}, {
+                address = Address,
+                flags = gg.TYPE_BYTE
+            }
+            for i = 1, length do
+                local _char = gg.getValues({char})[1].value
+                chars[i] = string.char(_char & 0xFF)
+                char.address = char.address + 0x1
+            end
+            return table.concat(chars)
+        end
     end,
 
 
@@ -396,7 +428,7 @@ Il2cpp = {
 
 Il2cpp = setmetatable(Il2cpp, {
     ---@param self Il2cpp
-    __call = function(self, libilcpp, globalMetadata, il2cppVersion, globalMetadataHeader)
+    __call = function(self, libilcpp, globalMetadata, il2cppVersion, globalMetadataHeader, metadataRegistration)
 
         if libilcpp then
             self.il2cppStart, self.il2cppEnd = libilcpp.start, libilcpp['end']
@@ -410,7 +442,9 @@ Il2cpp = setmetatable(Il2cpp, {
             self.globalMetadataStart, self.globalMetadataEnd = Sercher:FindGlobalMetaData()
         end
 
-        self.globalMetadataHeader = globalMetadataHeader and globalMetadataHeader or self.globalMetadataStart
+        self.globalMetadataHeader = globalMetadataHeader or self.globalMetadataStart
+
+        self.MetadataRegistrationApi.metadataRegistration = metadataRegistration
 
         VersionEngine:ChooseVersion(il2cppVersion)
 
@@ -420,6 +454,97 @@ Il2cpp = setmetatable(Il2cpp, {
 })
 
 return Il2cpp
+end)
+__bundle_register("il2cppstruct.api.fieldinfo", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@type FieldInfo
+local FieldInfoApi = {
+
+
+    ---@param self FieldInfo
+    ---@return nil | string | number
+    GetConstValue = function(self)
+        if self.IsConst then
+            local fieldIndex = getmetatable(self).fieldIndex
+            return Il2cpp.GlobalMetadataApi:GetDefaultFieldValue(fieldIndex)
+        end
+        return nil
+    end
+}
+
+return FieldInfoApi
+end)
+__bundle_register("il2cppstruct.api.classinfo", function(require, _LOADED, __bundle_register, __bundle_modules)
+local ClassInfoApi = {
+
+    
+    ---Get FieldInfo by Field Name. If Field isn't found by name, then function will return `nil`
+    ---@param self ClassInfo
+    ---@param name string
+    ---@return FieldInfo | nil
+    GetFieldWithName = function(self, name)
+        local FieldsInfo = self.Fields
+        if FieldsInfo then
+            for fieldIndex = 1, #FieldsInfo do
+                if FieldsInfo[fieldIndex].FieldName == name then
+                    return FieldsInfo[fieldIndex]
+                end
+            end
+        else
+            local ClassAddress = tonumber(self.ClassAddress, 16)
+            local _ClassInfo = gg.getValues({
+                { -- Link as Fields
+                    address = ClassAddress + Il2cpp.ClassApi.FieldsLink,
+                    flags = Il2cpp.MainType
+                },
+                { -- Fields Count
+                    address = ClassAddress + Il2cpp.ClassApi.CountFields,
+                    flags = gg.TYPE_WORD
+                }
+            })
+            self.Fields = Il2cpp.ClassApi:GetClassFields(Il2cpp.FixValue(_ClassInfo[1].value), _ClassInfo[2].value, {
+                ClassName = self.ClassName,
+                IsEnum = self.IsEnum,
+                TypeMetadataHandle = self.TypeMetadataHandle
+            })
+            return self:GetFieldWithName(name)
+        end
+        return nil
+    end,
+
+
+    ---Get MethodInfo[] by MethodName. If Method isn't found by name, then function will return `table with zero size`
+    ---@param self ClassInfo
+    ---@param name string
+    ---@return MethodInfo[]
+    GetMethodsWithName = function(self, name)
+        local MethodsInfo, MethodsInfoResult = self.Methods, {}
+        if MethodsInfo then
+            for methodIndex = 1, #MethodsInfo do
+                if MethodsInfo[methodIndex].MethodName == name then
+                    MethodsInfoResult[#MethodsInfoResult + 1] = MethodsInfo[methodIndex]
+                end
+            end
+            return MethodsInfoResult
+        else
+            local ClassAddress = tonumber(self.ClassAddress, 16)
+            local _ClassInfo = gg.getValues({
+                { -- Link as Methods
+                    address = ClassAddress + Il2cpp.ClassApi.MethodsLink,
+                    flags = Il2cpp.MainType
+                },
+                { -- Methods Count
+                    address = ClassAddress + Il2cpp.ClassApi.CountMethods,
+                    flags = gg.TYPE_WORD
+                }
+            })
+            self.Methods = Il2cpp.ClassApi:GetClassMethods(Il2cpp.FixValue(_ClassInfo[1].value), _ClassInfo[2].value,
+                self.ClassName)
+            return self:GetMethodsWithName(name)
+        end
+    end
+}
+
+return ClassInfoApi
 end)
 __bundle_register("il2cppstruct.object", function(require, _LOADED, __bundle_register, __bundle_modules)
 AndroidInfo = require("until.androidinfo")
@@ -512,76 +637,6 @@ local AndroidInfo = {
 return AndroidInfo
 end)
 __bundle_register("il2cppstruct.class", function(require, _LOADED, __bundle_register, __bundle_modules)
-local ClassInfoApi = {
-
-    
-    ---Get FieldInfo by Field Name. If Field isn't found by name, then function will return `nil`
-    ---@param self ClassInfo
-    ---@param name string
-    ---@return FieldInfo | nil
-    GetFieldWithName = function(self, name)
-        local FieldsInfo = self.Fields
-        if FieldsInfo then
-            for fieldIndex = 1, #FieldsInfo do
-                if FieldsInfo[fieldIndex].FieldName == name then
-                    return FieldsInfo[fieldIndex]
-                end
-            end
-        else
-            local ClassAddress = tonumber(self.ClassAddress, 16)
-            local _ClassInfo = gg.getValues({
-                { -- Link as Fields
-                    address = ClassAddress + Il2cpp.ClassApi.FieldsLink,
-                    flags = Il2cpp.MainType
-                },
-                { -- Fields Count
-                    address = ClassAddress + Il2cpp.ClassApi.CountFields,
-                    flags = gg.TYPE_WORD
-                }
-            })
-            self.Fields = Il2cpp.ClassApi:GetClassFields(Il2cpp.FixValue(_ClassInfo[1].value), _ClassInfo[2].value, {
-                ClassName = self.ClassName,
-                IsEnum = self.IsEnum,
-                TypeMetadataHandle = self.TypeMetadataHandle
-            })
-            return self:GetFieldWithName(name)
-        end
-        return nil
-    end,
-
-
-    ---Get MethodInfo[] by MethodName. If Method isn't found by name, then function will return `table with zero size`
-    ---@param self ClassInfo
-    ---@param name string
-    ---@return MethodInfo[]
-    GetMethodsWithName = function(self, name)
-        local MethodsInfo, MethodsInfoResult = self.Methods, {}
-        if MethodsInfo then
-            for methodIndex = 1, #MethodsInfo do
-                if MethodsInfo[methodIndex].MethodName == name then
-                    MethodsInfoResult[#MethodsInfoResult + 1] = MethodsInfo[methodIndex]
-                end
-            end
-            return MethodsInfoResult
-        else
-            local ClassAddress = tonumber(self.ClassAddress, 16)
-            local _ClassInfo = gg.getValues({
-                { -- Link as Methods
-                    address = ClassAddress + Il2cpp.ClassApi.MethodsLink,
-                    flags = Il2cpp.MainType
-                },
-                { -- Methods Count
-                    address = ClassAddress + Il2cpp.ClassApi.CountMethods,
-                    flags = gg.TYPE_WORD
-                }
-            })
-            self.Methods = Il2cpp.ClassApi:GetClassMethods(Il2cpp.FixValue(_ClassInfo[1].value), _ClassInfo[2].value,
-                self.ClassName)
-            return self:GetMethodsWithName(name)
-        end
-    end
-}
-
 ---@type ClassApi
 local ClassApi = {
     
@@ -713,7 +768,7 @@ local ClassApi = {
             IsEnum = ClassCharacteristic.IsEnum,
             TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle
         }, {
-            __index = ClassInfoApi
+            __index = Il2cpp.ClassInfoApi
         })
     end,
 
@@ -841,13 +896,11 @@ local FieldApi = {
 
     ---@param self FieldApi
     DecodeFieldsInfo = function(self, FieldsInfo, ClassCharacteristic)
-        local fieldStart, index, _FieldsInfo = nil, 0, {}
-        if ClassCharacteristic.IsEnum then
-            fieldStart = gg.getValues({{
-                address = ClassCharacteristic.TypeMetadataHandle + Il2cpp.Il2CppTypeDefinitionApi.fieldStart,
-                flags = gg.TYPE_DWORD
-            }})[1].value
-        end
+        local index, _FieldsInfo = 0, {}
+        local fieldStart = gg.getValues({{
+            address = ClassCharacteristic.TypeMetadataHandle + Il2cpp.Il2CppTypeDefinitionApi.fieldStart,
+            flags = gg.TYPE_DWORD
+        }})[1].value
         for i = 1, #FieldsInfo, 4 do
             index = index + 1
             local TypeInfo = Il2cpp.FixValue(FieldsInfo[i + 2].value)
@@ -865,19 +918,23 @@ local FieldApi = {
                     flags = Il2cpp.MainType
                 }
             })
-            local DefaultValue = nil
-            if ClassCharacteristic.IsEnum and FieldsInfo[i + 1].value == 0 then
-                DefaultValue = Il2cpp.GlobalMetadataApi:GetDefaultFieldValue(index + fieldStart - 1)
-            end
-            _FieldsInfo[index] = {
+            -- local DefaultValue = nil
+            -- if ClassCharacteristic.IsEnum and FieldsInfo[i + 1].value == 0 and Il2cpp.MetadataRegistrationApi.metadataRegistration ~= 0 then
+            --     DefaultValue = Il2cpp.GlobalMetadataApi:GetDefaultFieldValue(index + fieldStart - 1)
+            -- end
+            _FieldsInfo[index] = setmetatable({
                 ClassName = ClassCharacteristic.ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[i + 3].value),
                 ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[i + 3].value)),
                 FieldName = Il2cpp.Utf8ToString(Il2cpp.FixValue(FieldsInfo[i].value)),
                 Offset = string.format('%X', FieldsInfo[i + 1].value),
                 IsStatic = (_TypeInfo[1].value & 0x10) ~= 0,
                 Type = Il2cpp.TypeApi:GetTypeName(_TypeInfo[2].value, _TypeInfo[3].value),
-                DefaultValue = DefaultValue
-            }
+                IsConst = (_TypeInfo[1].value & 0x40) ~= 0,
+            },
+            {
+                __index = Il2cpp.FieldInfoApi,
+                fieldIndex = fieldStart + index - 1
+            })
         end
         return _FieldsInfo
     end
@@ -886,8 +943,73 @@ local FieldApi = {
 return FieldApi
 end)
 __bundle_register("il2cppstruct.globalmetadata", function(require, _LOADED, __bundle_register, __bundle_modules)
----@type GlobalMetadataApi
+---@class GlobalMetadataApi
+---@field typeDefinitionsSize number
+---@field typeDefinitionsOffset number
+---@field stringOffset number
+---@field fieldDefaultValuesOffset number
+---@field fieldDefaultValuesSize number
+---@field fieldAndParameterDefaultValueDataOffset number
+---@field version number
 local GlobalMetadataApi = {
+
+
+    ---@type table<number, fun(blob : number) : string | number>
+    behaviorForTypes = {
+        [2] = function(blob)
+            return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_BYTE)
+        end,
+        [3] = function(blob)
+            return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_BYTE)
+        end,
+        [4] = function(blob)
+            return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_BYTE)
+        end,
+        [5] = function(blob)
+            return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_BYTE)
+        end,
+        [6] = function(blob)
+            return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_WORD)
+        end,
+        [7] = function(blob)
+            return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_WORD)
+        end,
+        [8] = function(blob)
+            local self = Il2cpp.GlobalMetadataApi
+            return self.version < 29 and self.ReadNumberConst(blob, gg.TYPE_DWORD) or self.ReadCompressedInt32(blob)
+        end,
+        [9] = function(blob)
+            local self = Il2cpp.GlobalMetadataApi
+            return self.version < 29 and self.ReadNumberConst(blob, gg.TYPE_DWORD) or self.ReadCompressedUInt32(blob)
+        end,
+        [10] = function(blob)
+            return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_QWORD)
+        end,
+        [11] = function(blob)
+            return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_QWORD)
+        end,
+        [12] = function(blob)
+            return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_FLOAT)
+        end,
+        [13] = function(blob)
+            return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_DOUBLE)
+        end,
+        [14] = function(blob)
+            local self = Il2cpp.GlobalMetadataApi
+            local length, offset = 0, 0
+            if self.version >= 29 then
+                length, offset = self.ReadCompressedInt32(blob)
+            else
+                length = self.ReadNumberConst(blob, gg.TYPE_DWORD) 
+                offset = 4
+            end
+
+            if length ~= -1 then
+                return Il2cpp.Utf8ToString(blob + offset, length)
+            end
+            return ""
+        end
+    },
 
 
     ---@param self GlobalMetadataApi
@@ -941,6 +1063,70 @@ local GlobalMetadataApi = {
 
     
     ---@param Address number
+    ReadCompressedUInt32 = function(Address)
+        local val, offset = 0, 0
+        local read = gg.getValues({
+            { -- [1]
+                address = Address, 
+                flags = gg.TYPE_BYTE
+            },
+            { -- [2]
+                address = Address + 1, 
+                flags = gg.TYPE_BYTE
+            },
+            { -- [3]
+                address = Address + 2, 
+                flags = gg.TYPE_BYTE
+            },
+            { -- [4]
+                address = Address + 3, 
+                flags = gg.TYPE_BYTE
+            }
+        })
+        local read1 = read[1].value & 0xFF
+        offset = 1
+        if (read1 & 0x80) == 0 then
+            val = read1
+        elseif (read1 & 0xC0) == 0x80 then
+            val = (read1 & ~0x80) << 8
+            val = val | (read[2].value & 0xFF)
+            offset = offset + 1
+        elseif (read1 & 0xE0) == 0xC0 then
+            val = (read1 & ~0xC0) << 24
+            val = val | ((read[2].value & 0xFF) << 16)
+            val = val | ((read[3].value & 0xFF) << 8)
+            val = val | (read[4].value & 0xFF)
+            offset = offset + 3
+        elseif read1 == 0xF0 then
+            val = gg.getValues({{address = Address + 1, flags = gg.TYPE_DWORD}})[1].value
+            offset = offset + 4
+        elseif read1 == 0xFE then
+            val = 0xffffffff - 1
+        elseif read1 == 0xFF then
+            val = 0xffffffff
+        end
+        return val, offset
+    end,
+
+
+    ---@param Address number
+    ReadCompressedInt32 = function(Address)
+        local encoded, offset = Il2cpp.GlobalMetadataApi.ReadCompressedUInt32(Address)
+
+        if encoded == 0xffffffff then
+            return -2147483647 - 1
+        end
+
+        local isNegative = (encoded & 1) == 1
+        encoded = encoded >> 1
+        if isNegative then
+            return -(encoded + 1)
+        end
+        return encoded, offset
+    end,
+
+
+    ---@param Address number
     ---@param ggType number @gg.TYPE_
     ReadNumberConst = function(Address, ggType)
         return gg.getValues({{
@@ -956,12 +1142,25 @@ local GlobalMetadataApi = {
     GetDefaultFieldValue = function(self, index)
         local Il2CppFieldDefaultValue = self:GetIl2CppFieldDefaultValue(tostring(index))
         if #Il2CppFieldDefaultValue > 0 then
-            local dataIndex = gg.getValues({{
-                address = Il2CppFieldDefaultValue[1].address + 8,
-                flags = gg.TYPE_DWORD
-            }})[1].value
-            local blob = self:GetFieldOrParameterDefalutValue(dataIndex)
-            return self.ReadNumberConst(blob, gg.TYPE_WORD)
+            local _Il2CppFieldDefaultValue = gg.getValues({
+                { -- TypeIndex [1]
+                    address = Il2CppFieldDefaultValue[1].address + 4,
+                    flags = gg.TYPE_DWORD,
+                },
+                { -- dataIndex [2]
+                    address = Il2CppFieldDefaultValue[1].address + 8,
+                    flags = gg.TYPE_DWORD
+                }
+            })
+            local blob = self:GetFieldOrParameterDefalutValue(_Il2CppFieldDefaultValue[2].value)
+            local Il2CppType = Il2cpp.MetadataRegistrationApi:GetIl2CppTypeFromIndex(_Il2CppFieldDefaultValue[1].value)
+            local typeEnum = Il2cpp.TypeApi:GetTypeEnum(Il2CppType)
+            ---@type string | fun(blob : number) : string | number
+            local behavior = self.behaviorForTypes[typeEnum] or "Not support type"
+            if type(behavior) == "function" then
+                return behavior(blob)
+            end
+            return behavior
         end
         return nil
     end
@@ -1182,9 +1381,26 @@ local MethodsApi = {
 return MethodsApi
 end)
 __bundle_register("il2cppstruct.type", function(require, _LOADED, __bundle_register, __bundle_modules)
----@type TypeApi
+---@class TypeApi
+---@field Type number
+---@field tableConst table
+---@field tableTypes table
 local TypeApi = {
 
+    tableConst = {
+        [2] = gg.TYPE_BYTE,
+        [3] = gg.TYPE_BYTE,
+        [4] = gg.TYPE_BYTE,
+        [5] = gg.TYPE_BYTE,
+        [6] = gg.TYPE_WORD,
+        [7] = gg.TYPE_WORD,
+        [8] = gg.TYPE_DWORD,
+        [9] = gg.TYPE_DWORD,
+        [10] = gg.TYPE_QWORD,
+        [11] = gg.TYPE_QWORD,
+        [12] = gg.TYPE_FLOAT,
+        [13] = gg.TYPE_DOUBLE,
+    },
     tableTypes = {
         [1] = "void",
         [2] = "bool",
@@ -1246,18 +1462,77 @@ local TypeApi = {
             typeName = typeName(index)
         end
         return typeName
+    end,
+
+
+    ---@param self TypeApi
+    GetGGTYPEInIl2CppType = function(self, Il2CppType)
+        local typeEnum =self:GetTypeEnum(Il2CppType)
+        if self.tableConst[typeEnum] then
+            return self.tableConst[typeEnum]
+        end
+        return "Not support type"
+    end,
+
+
+    ---@param self TypeApi
+    ---@param typeEnum number
+    GetGGTYPEFromTypeEnum = function(self, typeEnum)
+        if self.tableConst[typeEnum] then
+            return self.tableConst[typeEnum]
+        end
+        return "Not support type"
+    end,
+
+
+    ---@param self TypeApi
+    ---@param Il2CppType number
+    GetTypeEnum = function(self, Il2CppType)
+        return gg.getValues({{address = Il2CppType + self.Type, flags = gg.TYPE_BYTE}})[1].value
     end
 }
 
 return TypeApi
 end)
+__bundle_register("il2cppstruct.metadataRegistration", function(require, _LOADED, __bundle_register, __bundle_modules)
+local Searcher = require("until.universalsearcher")
+
+---@class MetadataRegistrationApi
+---@field metadataRegistration number
+---@field types number
+local MetadataRegistrationApi = {
+
+
+    ---@param self MetadataRegistrationApi
+    ---@return number
+    GetIl2CppTypeFromIndex = function(self, index)
+        if not self.metadataRegistration then
+            self:FindMetadataRegistration()
+        end
+        local types = gg.getValues({{address = self.metadataRegistration + self.types, flags = Il2cpp.MainType}})[1].value
+        return Il2cpp.FixValue(gg.getValues({{address = types + (Il2cpp.pointSize * index), flags = Il2cpp.MainType}})[1].value)
+    end,
+
+
+    ---@param self MetadataRegistrationApi
+    ---@return void
+    FindMetadataRegistration = function(self)
+        self.metadataRegistration = Searcher.Il2CppMetadataRegistration()
+    end
+}
+
+return MetadataRegistrationApi
+end)
 __bundle_register("until.universalsearcher", function(require, _LOADED, __bundle_register, __bundle_modules)
+local AndroidInfo = require("until.androidinfo")
+
 ---@class Searcher
 local Searcher = {
     searchWord = ":EnsureCapacity",
 
     ---@param self Searcher
     FindGlobalMetaData = function(self)
+        gg.clearResults()
         gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
                          gg.REGION_OTHER)
         local globalMetadata = gg.getRangesList('global-metadata.dat')
@@ -1311,10 +1586,41 @@ local Searcher = {
             end
         end
         return il2cpp[1].start, il2cpp[#il2cpp]['end']
+    end,
+
+    Il2CppMetadataRegistration = function()
+        gg.clearResults()
+        gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
+                         gg.REGION_OTHER)
+        gg.loadResults({{
+            address = Il2cpp.globalMetadataStart,
+            flags = Il2cpp.MainType
+        }})
+        gg.searchPointer(0)
+        if gg.getResultsCount() == 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
+            gg.searchNumber(tostring(Il2cpp.globalMetadataStart | 0xB400000000000000), Il2cpp.MainType)
+        end
+        if gg.getResultsCount() > 0 then
+            local GlobalMetadataPointers, s_GlobalMetadata = gg.getResults(gg.getResultsCount()), 0
+            for i = 1, #GlobalMetadataPointers do
+                if i ~= 1 then
+                    local difference = GlobalMetadataPointers[i].address - GlobalMetadataPointers[i - 1].address
+                    if (difference == Il2cpp.pointSize) then
+                        s_GlobalMetadata = Il2cpp.FixValue(gg.getValues({{
+                            address = GlobalMetadataPointers[i].address - 0x10,
+                            flags = Il2cpp.MainType
+                        }})[1].value)
+                    end
+                end
+            end
+            return s_GlobalMetadata
+        end
+        return 0
     end
 }
 
 return Searcher
+
 end)
 __bundle_register("until.version", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class VersionEngine
@@ -1456,6 +1762,8 @@ local VersionEngine = {
             Il2cpp.TypeApi.Type = api.TypeApiType
 
             Il2cpp.Il2CppTypeDefinitionApi.fieldStart = api.Il2CppTypeDefinitionApifieldStart
+
+            Il2cpp.MetadataRegistrationApi.types = api.MetadataRegistrationApitypes
         else
             error('Not support this il2cpp version')
         end 
@@ -1466,37 +1774,28 @@ return VersionEngine
 end)
 __bundle_register("until.il2cppmemory", function(require, _LOADED, __bundle_register, __bundle_modules)
 -- Memorizing Il2cpp Search Result
----@class Il2cppMemory
+---@type Il2cppMemory
 local Il2cppMemory = {
     Methods = {},
     Classes = {},
 
-    ---@param self Il2cppMemory
-    ---@param searchParam number | string
-    ---@return MethodInfo[] | nil | ErrorSearch
+
     GetInformaionOfMethod = function(self, searchParam)
         return self.Methods[searchParam]
     end,
 
-    ---@param self Il2cppMemory
-    ---@param searchParam string | number
-    ---@param searchResult MethodInfo[] | ErrorSearch
+
     SetInformaionOfMethod = function(self, searchParam, searchResult)
         self.Methods[searchParam] = searchResult
     end,
 
-    ---@param self Il2cppMemory
-    ---@param searchParam number | string
-    ---@return ClassesMemory | nil
+
     GetInfoOfClass = function(self, searchParam)
         return self.Classes[searchParam]
     end,
 
-    ---@param self Il2cppMemory
-    ---@param searchParam ClassConfig
-    ---@return ClassInfo[] | nil | ErrorSearch
+
     GetInformationOfClass = function(self, searchParam)
-        ---@type ClassesMemory | nil
         local ClassMemory = self:GetInfoOfClass(searchParam.Class)
         if not (ClassMemory and
             (ClassMemory.Config.FieldsDump == searchParam.FieldsDump and ClassMemory.Config.MethodsDump ==
@@ -1506,9 +1805,7 @@ local Il2cppMemory = {
         return ClassMemory.SearchResult
     end,
 
-    ---@param self Il2cppMemory
-    ---@param searchParam ClassConfig
-    ---@param searchResult ClassInfo[] | ErrorSearch
+
     SetInformaionOfClass = function(self, searchParam, searchResult)
         self.Classes[searchParam.Class] = {
             Config = {
@@ -1557,6 +1854,7 @@ Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x2C,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [24] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -1587,6 +1885,7 @@ Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x30,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [24.2] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -1617,6 +1916,7 @@ Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x24,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [24.3] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -1647,6 +1947,7 @@ Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x24,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [24.4] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -1677,6 +1978,7 @@ Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x24,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [24.5] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -1707,6 +2009,7 @@ Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x24,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [27] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -1737,6 +2040,7 @@ Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x20,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [27.1] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -1767,6 +2071,7 @@ Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x20,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [27.2] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -1797,6 +2102,7 @@ Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x20,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [29] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -1827,6 +2133,7 @@ Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x20,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     }
 }
 end)
