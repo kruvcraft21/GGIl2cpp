@@ -249,3 +249,13 @@ I will also make some [snippets](/test/) of the code to make it easier to figure
 `Memorizing Il2cpp Search Result` is a special simple system to speed up the module. It remembers the search results.
 
 It is worth noting that any call to the `Il2cpp()` function will reset this system.
+
+## How to build
+
+After you have made changes to the module, you can build it, for this you will need to install `nodejs`, `typescript`, `ts-node`, `git`.
+
+```shell
+git clone https://github.com/kruvcraft21/GGIl2cpp
+npm i
+npm start
+```
