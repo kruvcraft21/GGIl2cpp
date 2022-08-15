@@ -42,3 +42,4 @@ luac.out
 # For modules
 node_modules
 package-lock.json
+gg.lua

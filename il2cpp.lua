@@ -1,11 +1,27 @@
-
----@type Il2cppMemory
 local Il2cppMemory = require("until.il2cppmemory")
 
----@type VersionEngine
 local VersionEngine = require("until.version")
 
 local AndroidInfo = require("until.androidinfo")
+
+local Sercher = require("until.universalsearcher")
+
+function GetTypeClassName(index)
+    return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
+end
+
+function getAlfUtf16()
+    local Utf16 = {}
+    for s in string.gmatch('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', "..") do
+        local char = gg.bytes(s,'UTF-16LE')
+        Utf16[char[1] + (char[2] * 256)] = s
+    end
+    for s in string.gmatch("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_/0123456789-'", ".") do
+        local char = gg.bytes(s,'UTF-16LE')
+        Utf16[char[1] + (char[2] * 256)] = s
+    end
+    return Utf16
+end
 
 ---@class Il2cpp
 Il2cpp = {
@@ -15,7 +31,18 @@ Il2cpp = {
     globalMetadataEnd = 0,
     globalMetadataHeader = 0,
     MainType = AndroidInfo.platform and gg.TYPE_QWORD or gg.TYPE_DWORD,
-
+    pointSize = AndroidInfo.platform and 8 or 4,
+    ---@type Il2CppTypeDefinitionApi
+    Il2CppTypeDefinitionApi = {},
+    MetadataRegistrationApi = require("il2cppstruct.metadataRegistration"),
+    TypeApi = require("il2cppstruct.type"),
+    MethodsApi = require("il2cppstruct.method"),
+    GlobalMetadataApi = require("il2cppstruct.globalmetadata"),
+    FieldApi = require("il2cppstruct.field"),
+    ClassApi = require("il2cppstruct.class"),
+    ObjectApi = require("il2cppstruct.object"),
+    ClassInfoApi = require("il2cppstruct.api.classinfo"),
+    FieldInfoApi = require("il2cppstruct.api.fieldinfo"),
     
     --- Patch `Bytescodes` to `add`
     ---
@@ -108,18 +135,32 @@ Il2cpp = {
 
 
     ---@param Address number
+    ---@param length? number
     ---@return string
-    Utf8ToString = function(Address)
-        local chars, char = {}, {
-            address = Address,
-            flags = gg.TYPE_BYTE
-        }
-        repeat
-            _char = gg.getValues({char})[1].value
-            chars[#chars + 1] = string.char(_char & 0xFF)
-            char.address = char.address + 0x1
-        until _char <= 0
-        return table.concat(chars, "", 1, #chars - 1)
+    Utf8ToString = function(Address, length)
+        if not length then
+            local chars, char = {}, {
+                address = Address,
+                flags = gg.TYPE_BYTE
+            }
+            repeat
+                _char = gg.getValues({char})[1].value
+                chars[#chars + 1] = string.char(_char & 0xFF)
+                char.address = char.address + 0x1
+            until _char <= 0
+            return table.concat(chars, "", 1, #chars - 1)
+        else
+            local chars, char = {}, {
+                address = Address,
+                flags = gg.TYPE_BYTE
+            }
+            for i = 1, length do
+                local _char = gg.getValues({char})[1].value
+                chars[i] = string.char(_char & 0xFF)
+                char.address = char.address + 0x1
+            end
+            return table.concat(chars)
+        end
     end,
 
 
@@ -178,76 +219,25 @@ Il2cpp = {
     end,
 }
 
----@type Il2CppTypeDefinitionApi
-Il2cpp.Il2CppTypeDefinitionApi = {}
-
-Il2cpp.TypeApi = require("il2cppstruct.type")
-Il2cpp.MethodsApi = require("il2cppstruct.method")
-Il2cpp.GlobalMetadataApi = require("il2cppstruct.globalmetadata")
-Il2cpp.FieldApi = require("il2cppstruct.field")
-Il2cpp.ClassApi = require("il2cppstruct.class")
-Il2cpp.ObjectApi = require("il2cppstruct.object")
-
 Il2cpp = setmetatable(Il2cpp, {
     ---@param self Il2cpp
-    __call = function(self, libilcpp, globalMetadata, il2cppVersion, globalMetadataHeader)
-        
-        local function FindGlobalMetaData()
-            local globalMetadata = gg.getRangesList('global-metadata.dat')
-            gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_OTHER)
-            if (#globalMetadata ~= 0) then gg.searchNumber(':EnsureCapacity',gg.TYPE_BYTE,false,gg.SIGN_EQUAL,globalMetadata[1].start,globalMetadata[#globalMetadata]['end']) end
-            if (gg.getResultsCount() == 0 or #globalMetadata == 0) then
-                globalMetadata = {}
-                gg.clearList()
-                gg.searchNumber(':EnsureCapacity', gg.TYPE_BYTE)
-                gg.refineNumber(':E', gg.TYPE_BYTE)
-                    local EnsureCapacity = gg.getResults(gg.getResultsCount())
-                    gg.clearResults()
-                    for k,v in ipairs(gg.getRangesList()) do
-                        if (v.state == 'Ca' or v.state == 'A' or v.state == 'Cd' or v.state == 'Cb' or v.state == 'Ch' or v.state == 'O') then
-                            for key, val in ipairs(EnsureCapacity) do
-                                globalMetadata[#globalMetadata + 1] = (Il2cpp.FixValue(v.start) <= Il2cpp.FixValue(val.address) and Il2cpp.FixValue(val.address) < Il2cpp.FixValue(v['end'])) 
-                                    and v 
-                                    or nil
-                            end
-                        end
-                    end
-            else gg.clearResults()
-            end
-            return globalMetadata[1].start, globalMetadata[#globalMetadata]['end']
-        end
-
-        local function FindIl2cpp()
-            local il2cpp = gg.getRangesList('libil2cpp.so')
-            if (#il2cpp == 0) then
-                local splitconf = gg.getRangesList('split_config.')
-                gg.setRanges(gg.REGION_CODE_APP)
-                for k,v in ipairs(splitconf) do
-                    if (v.state == 'Xa') then
-                        gg.searchNumber(':il2cpp',gg.TYPE_BYTE,false,gg.SIGN_EQUAL,v.start,v['end'])
-                        if (gg.getResultsCount() > 0) then
-                            il2cpp[#il2cpp + 1] = v
-                            gg.clearResults()
-                        end
-                    end
-                end
-            end
-            return il2cpp[1].start, il2cpp[#il2cpp]['end']
-        end
+    __call = function(self, libilcpp, globalMetadata, il2cppVersion, globalMetadataHeader, metadataRegistration)
 
         if libilcpp then
             self.il2cppStart, self.il2cppEnd = libilcpp.start, libilcpp['end']
         else
-            self.il2cppStart, self.il2cppEnd = FindIl2cpp()
+            self.il2cppStart, self.il2cppEnd = Sercher.FindIl2cpp()
         end
 
         if globalMetadata then
             self.globalMetadataStart, self.globalMetadataEnd = globalMetadata.start, globalMetadata['end']
         else
-            self.globalMetadataStart, self.globalMetadataEnd = FindGlobalMetaData()
+            self.globalMetadataStart, self.globalMetadataEnd = Sercher:FindGlobalMetaData()
         end
 
-        self.globalMetadataHeader = globalMetadataHeader and globalMetadataHeader or self.globalMetadataStart
+        self.globalMetadataHeader = globalMetadataHeader or self.globalMetadataStart
+
+        self.MetadataRegistrationApi.metadataRegistration = metadataRegistration
 
         VersionEngine:ChooseVersion(il2cppVersion)
 

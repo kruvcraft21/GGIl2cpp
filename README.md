@@ -16,7 +16,6 @@ Il2cpp.FindMethods()
 Il2cpp.FindClass()
 Il2cpp.PatchesAddress()
 Il2cpp.FindObject()
-addresspath()
 ```
 
 
@@ -25,7 +24,6 @@ addresspath()
 * "Il2cpp.FindClass()" - Searches for a class, by name, or by address in memory.
 * "Il2cpp.PatchesAddress()" - Patch `Bytescodes` to `add`
 * "Il2cpp.FindObject()" - Searches for an object by name or by class address, in memory. In some cases, the function may return an incorrect result for certain classes. For example, sometimes the garbage collector may not have time to remove an object from memory and then a `fake object` will appear or for a turnover, the object may still be `not implemented` or `not created`.
-* "addresspath()" - is a function that was created to patch the desired address. The first argument should be an offset, and the subsequent ones should be constructs.
 
 ## How to use
 
@@ -164,24 +162,6 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
         }
     },
 }
-]]
-
-local Method1 = Il2cpp.FindMethods({'Method1'})[1]
-for k,v in ipairs(Method1) do
-    if v.ClassName == 'MyClass' then 
-        addresspath(tonumber(v.AddressInMemory,16),"\x20\x00\x80\x52","\xc0\x03\x5f\xd6")
-    end
-end
-
---output
---[[
-this code changes will change the method "Method1", so that it constantly returns 1
-
-arm64:
-
-51234FFF 20008052 mov w0,#0x1
-51235003 C0035FD6 ret
-
 ]]
 
 local Method1 = Il2cpp.FindMethods({'Method1'})[1]

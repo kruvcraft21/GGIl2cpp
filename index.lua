@@ -1,3 +1,4 @@
+require("until.il2cppconst")
 require("il2cpp")
 
 ---@class ClassInfoRaw
@@ -30,17 +31,6 @@ require("il2cpp")
 ---@field Type number
 ---@field ClassOffset number
 
----@class TypeApi
----@field Type number
-
----@class GlobalMetadataApi
----@field typeDefinitionsSize number
----@field typeDefinitionsOffset number
----@field stringOffset number
----@field fieldDefaultValuesOffset number
----@field fieldDefaultValuesSize number
----@field fieldAndParameterDefaultValueDataOffset number
----@field version number
 
 ---@class ClassApi
 ---@field NameOffset number
@@ -56,16 +46,21 @@ require("il2cpp")
 ---@field EnumType number
 ---@field EnumRsh number
 ---@field TypeMetadataHandle number
+---@field GetClassName fun(self : ClassApi, ClassAddress : number) : string
+---@field GetClassMethods fun(self : ClassApi, MethodsLink : number, Count : number, ClassName : string | nil) : MethodInfo[]
+
 
 ---@class ClassesMemory
 ---@field Config ClassConfig
 ---@field SearchResult ClassInfo[]
+
 
 ---@class MethodsApi
 ---@field ClassOffset number
 ---@field NameOffset number
 ---@field ParamCount number
 ---@field ReturnType number
+
 
 ---@class FieldInfo
 ---@field ClassName string 
@@ -74,6 +69,9 @@ require("il2cpp")
 ---@field Offset string
 ---@field IsStatic boolean
 ---@field Type string
+---@field IsConst boolean
+---@field GetConstValue fun(self : FieldInfo) : nil | string | number
+
 
 ---@class MethodInfoRaw
 ---@field MethodName string | nil
@@ -82,8 +80,10 @@ require("il2cpp")
 ---@field ClassName string | nil
 ---@field MethodAddress number
 
+
 ---@class ErrorSearch
 ---@field Error string
+
 
 ---@class MethodInfo : MethodInfoRaw
 ---@field MethodName string
@@ -94,6 +94,7 @@ require("il2cpp")
 ---@field ClassAddress string
 ---@field ParamCount number
 ---@field ReturnType string
+
 
 ---@class Il2cppApi
 ---@field FieldApiOffset number
@@ -124,14 +125,30 @@ require("il2cpp")
 ---@field fieldAndParameterDefaultValueDataOffset number
 ---@field TypeApiType number
 ---@field Il2CppTypeDefinitionApifieldStart number
+---@field MetadataRegistrationApitypes number
+
 
 ---@class ClassConfig
 ---@field Class number | string @Class Name or Address Class
 ---@field FieldsDump boolean
 ---@field MethodsDump boolean
 
+
 ---@class Il2CppTypeDefinitionApi
 ---@field fieldStart number
+
+
+
+
+
+---@class Il2cppMemory
+---@field Methods table<number | string, MethodInfo[] | ErrorSearch>
+---@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
+---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
+---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
+---@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
+---@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : ClassConfig) : ClassInfo[] | nil | ErrorSearch
+---@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
 
 Protect = {
     ErrorHandler = function(err)
@@ -141,33 +158,5 @@ Protect = {
         return ({xpcall(fun, self.ErrorHandler, ...)})[2]
     end
 }
-
-function getAlfUtf16()
-    local Utf16 = {}
-    for s in string.gmatch('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', "..") do
-        local char = gg.bytes(s,'UTF-16LE')
-        Utf16[char[1] + (char[2] * 256)] = s
-    end
-    for s in string.gmatch("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_/0123456789-'", ".") do
-        local char = gg.bytes(s,'UTF-16LE')
-        Utf16[char[1] + (char[2] * 256)] = s
-    end
-    return Utf16
-end
-
---- Is a function that was created to patch the desired address. The first argument should be an offset, and the subsequent ones should be constructs.
----@param StartAddress number
-function addresspath(StartAddress, ...)
-    local params, patch = {...}, {}
-    for i = 1,#params do
-        StartAddress = i ~= 1 and StartAddress + 0x4 or StartAddress
-        patch[#patch + 1] = {address = StartAddress, flags = gg.TYPE_DWORD, value = params[i]:gsub('.', function (c) return string.format('%02X', string.byte(c)) end)..'r'}
-    end
-    gg.setValues(patch)
-end
-
-function GetTypeClassName(index)
-    return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
-end
 
 return Il2cpp

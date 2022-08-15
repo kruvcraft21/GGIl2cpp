@@ -1,7 +1,7 @@
 local AndroidInfo = require("until.androidinfo")
 
 ---@type table<number, Il2cppApi>
-local Il2cppApi = {
+Il2cppApi = {
     [24.1] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
         FieldApiType = AndroidInfo.platform and 0x8 or 0x4,
@@ -31,6 +31,7 @@ local Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x2C,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [24] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -61,6 +62,7 @@ local Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x30,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [24.2] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -91,6 +93,7 @@ local Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x24,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [24.3] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -121,6 +124,7 @@ local Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x24,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [24.4] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -151,6 +155,7 @@ local Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x24,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [24.5] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -181,6 +186,7 @@ local Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x24,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [27] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -211,6 +217,7 @@ local Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x20,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [27.1] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -241,6 +248,7 @@ local Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x20,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [27.2] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -271,6 +279,7 @@ local Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x20,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     },
     [29] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
@@ -301,8 +310,6 @@ local Il2cppApi = {
         fieldAndParameterDefaultValueDataOffset = 0x48,
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x20,
+        MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     }
 }
-
-
-return Il2cppApi

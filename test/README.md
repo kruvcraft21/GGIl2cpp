@@ -16,6 +16,13 @@ public class TestClass : MonoBehaviour
     public int field1;
     public float field2;
     public static int field3;
+    private const int field6 = 679;
+    private const float field7 = 23.345f;
+    private const string field8 = "Isn't Const";
+    private const uint field9 = 414141412;
+    private const bool field10 = true;
+    private const int field11 = -12414;
+    private const int field12 = 5;
 
     private System.Random random = new System.Random(DateTime.UtcNow.GetHashCode());
 
@@ -38,6 +45,11 @@ public class TestClass : MonoBehaviour
         return random.Next(0, 30);
     }
 
+    public int GetField5()
+    {
+        return (int)TestEnum.var4;
+    }
+
     public void UpdateTextField()
     {
         Debug.Log(textFields.Length);
@@ -58,6 +70,14 @@ public class TestClass : MonoBehaviour
             textField.GetComponent<TextMeshProUGUI>().text = nameField + " = " + testClass.GetMethod("Get" + nameField).Invoke((object)this, null);
         }
     }
+}
+
+public enum TestEnum : int
+{
+    var1,
+    var2,
+    var3,
+    var4,
 }
 
 ```
@@ -360,3 +380,196 @@ Result of code execution:
 ```
 
 ![Exapmle](/test/img/Screenshot_20220712-090652.png)
+
+
+## An example of how you can get constants
+
+```lua
+Il2cpp()
+
+local TestClass = Il2cpp.FindClass({{Class ="TestClass", FieldsDump = true}})[1]
+
+print(TestClass)
+
+for k,v in ipairs(TestClass[1].Fields) do
+    print(v.FieldName, v:GetConstValue())
+end
+```
+
+Result of code execution:
+
+```lua
+Скрипт завершен:
+{ -- table(2fac388)
+	[1] = { -- table(f88e121)
+		['ClassAddress'] = '7A473A2780',
+		['ClassName'] = 'TestClass',
+		['ClassNameSpace'] = '',
+		['Fields'] = { -- table(2661946)
+			[ 1] = { -- table(3504707)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field1',
+				['IsConst'] = false,
+				['IsStatic'] = false,
+				['Offset'] = '18',
+				['Type'] = 'int',
+			},
+			[ 2] = { -- table(53c9034)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field2',
+				['IsConst'] = false,
+				['IsStatic'] = false,
+				['Offset'] = '1C',
+				['Type'] = 'float',
+			},
+			[ 3] = { -- table(af16e5d)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field3',
+				['IsConst'] = false,
+				['IsStatic'] = true,
+				['Offset'] = '0',
+				['Type'] = 'int',
+			},
+			[ 4] = { -- table(15a83d2)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field6',
+				['IsConst'] = true,
+				['IsStatic'] = true,
+				['Offset'] = '0',
+				['Type'] = 'int',
+			},
+			[ 5] = { -- table(e204ca3)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field7',
+				['IsConst'] = true,
+				['IsStatic'] = true,
+				['Offset'] = '0',
+				['Type'] = 'float',
+			},
+			[ 6] = { -- table(42c7ba0)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field8',
+				['IsConst'] = true,
+				['IsStatic'] = true,
+				['Offset'] = '0',
+				['Type'] = 'string',
+			},
+			[ 7] = { -- table(25b9359)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field9',
+				['IsConst'] = true,
+				['IsStatic'] = true,
+				['Offset'] = '0',
+				['Type'] = 'uint',
+			},
+			[ 8] = { -- table(7b90b1e)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field10',
+				['IsConst'] = true,
+				['IsStatic'] = true,
+				['Offset'] = '0',
+				['Type'] = 'bool',
+			},
+			[ 9] = { -- table(2610fff)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field11',
+				['IsConst'] = true,
+				['IsStatic'] = true,
+				['Offset'] = '0',
+				['Type'] = 'int',
+			},
+			[10] = { -- table(46db1cc)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'field12',
+				['IsConst'] = true,
+				['IsStatic'] = true,
+				['Offset'] = '0',
+				['Type'] = 'int',
+			},
+			[11] = { -- table(ea90c15)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'random',
+				['IsConst'] = false,
+				['IsStatic'] = false,
+				['Offset'] = '20',
+				['Type'] = 'Random',
+			},
+			[12] = { -- table(ce6bb2a)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'textFields',
+				['IsConst'] = false,
+				['IsStatic'] = false,
+				['Offset'] = '28',
+				['Type'] = 'GameObject[]',
+			},
+			[13] = { -- table(7c0ad1b)
+				['ClassAddress'] = '7A473A2780',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = 'textFieldsMethods',
+				['IsConst'] = false,
+				['IsStatic'] = false,
+				['Offset'] = '30',
+				['Type'] = 'GameObject[]',
+			},
+		},
+		['IsEnum'] = false,
+		['Parent'] = { -- table(faa1eb8)
+			['ClassAddress'] = '7B172EF700',
+			['ClassName'] = 'MonoBehaviour',
+		},
+		['StaticFieldData'] = 530552838896,
+		['TypeMetadataHandle'] = 529091445172,
+	},
+	[2] = { -- table(b1b5491)
+		['ClassAddress'] = '7B174B0280',
+		['ClassName'] = 'TestClass',
+		['ClassNameSpace'] = '',
+		['Fields'] = { -- table(78d5ff6)
+			[1] = { -- table(8b2fff7)
+				['ClassAddress'] = '0',
+				['ClassName'] = 'TestClass',
+				['FieldName'] = '',
+				['IsConst'] = false,
+				['IsStatic'] = false,
+				['Offset'] = '0',
+				['Type'] = 'not support type -> 0x0',
+			},
+		},
+		['IsEnum'] = false,
+		['Parent'] = { -- table(e3e6e64)
+			['ClassAddress'] = '7B87CABF80',
+			['ClassName'] = 'ValueType',
+		},
+		['TypeMetadataHandle'] = 529091377148,
+	},
+}
+field1 	nil
+field2 	nil
+field3 	nil
+field6 	679
+field7 	23.344999313354492
+field8 	Isn't Const
+field9 	414141412
+field10 	1
+field11 	-12414
+field12 	5
+random 	nil
+textFields 	nil
+textFieldsMethods 	nil
+
+Завершено.
+
+Скрипт записал 93,98 КБ в 2 файлов.
+```

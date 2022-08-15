@@ -1,6 +1,3 @@
----@type table<number, Il2cppApi>
-local Il2cppApi = require("until.il2cppconst")
-
 ---@class VersionEngine
 local VersionEngine = {
     Year = {
@@ -140,6 +137,8 @@ local VersionEngine = {
             Il2cpp.TypeApi.Type = api.TypeApiType
 
             Il2cpp.Il2CppTypeDefinitionApi.fieldStart = api.Il2CppTypeDefinitionApifieldStart
+
+            Il2cpp.MetadataRegistrationApi.types = api.MetadataRegistrationApitypes
         else
             error('Not support this il2cpp version')
         end 
