@@ -74,6 +74,32 @@ local ObjectApi = {
             table.move(FindResult, 1, #FindResult, #Objects + 1, Objects)
         end
         return Objects
+    end,
+
+
+    FindHead = function(Address)
+        local validAddress = getValidStartAddress(Address)
+        local mayBeHead = {}
+        for i = 1, 1000 do
+            mayBeHead[i] = {
+                address = validAddress - (4 * (i - 1)),
+                flags = Il2cpp.MainType
+            } 
+        end
+        mayBeHead = gg.getValues(mayBeHead)
+        for i = 1, #mayBeHead do
+            local mayBeClass = Il2cpp.FixValue(mayBeHead[i].value)
+            if Il2cpp.ClassApi.IsClassInfo(mayBeClass) then
+                return mayBeHead[i].address
+            end
+        end
+        return 0
+    end,
+
+
+    ---@param self ObjectApi
+    Set = function(self, Address)
+        return gg.getValues({{address = self.FindHead(Address), flags = Il2cpp.MainType}})[1]
     end
 }
 

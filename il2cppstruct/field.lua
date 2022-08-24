@@ -1,4 +1,8 @@
----@type FieldApi
+---@class FieldApi
+---@field Offset number
+---@field Type number
+---@field ClassOffset number
+---@field Find fun(self : FieldApi, fieldSearchCondition : string | number)
 local FieldApi = {
 
 
@@ -50,10 +54,6 @@ local FieldApi = {
                     flags = Il2cpp.MainType
                 }
             })
-            -- local DefaultValue = nil
-            -- if ClassCharacteristic.IsEnum and FieldsInfo[i + 1].value == 0 and Il2cpp.MetadataRegistrationApi.metadataRegistration ~= 0 then
-            --     DefaultValue = Il2cpp.GlobalMetadataApi:GetDefaultFieldValue(index + fieldStart - 1)
-            -- end
             _FieldsInfo[index] = setmetatable({
                 ClassName = ClassCharacteristic.ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[i + 3].value),
                 ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[i + 3].value)),
@@ -65,10 +65,70 @@ local FieldApi = {
             },
             {
                 __index = Il2cpp.FieldInfoApi,
-                fieldIndex = fieldStart + index - 1
+                fieldIndex = fieldStart + index - 1,
             })
         end
         return _FieldsInfo
+    end,
+
+
+    FindFieldWithAddress = function(self, fieldAddress)
+        local ResultTable = {}
+        local Il2cppObject = Il2cpp.ObjectApi:Set(fieldAddress)
+        local fieldOffset = fieldAddress - Il2cppObject.address
+        local classAddress = Il2cpp.FixValue(Il2cppObject.value)
+        local Il2cppClass = Il2cpp.FindClass({{Class = classAddress, FieldsDump = true}})[1]
+        local lastFieldInfo
+        for i, v in ipairs(Il2cppClass) do
+            if v.Fields and v.InstanceSize >= fieldOffset then
+                for j = 1, #v.Fields do
+                    local offsetNumber = tonumber(v.Fields[j].Offset, 16)
+                    if offsetNumber > fieldOffset then
+                        ResultTable[#ResultTable + 1] = lastFieldInfo
+                        break;
+                    elseif offsetNumber == fieldOffset then
+                        ResultTable[#ResultTable + 1] = v.Fields[j]
+                        break;
+                    elseif j == #v.Fields then
+                        ResultTable[#ResultTable + 1] = v.Fields[j]
+                        break;
+                    elseif offsetNumber > 0 then
+                        lastFieldInfo = v.Fields[j]
+                    end
+                end
+            end
+        end
+        if (#ResultTable == 0) then
+            error('nothing was found for this address 0x' .. string.format("%X", fieldAddress))
+        end
+        return ResultTable
+    end,
+
+
+    FindTypeCheck = {
+        ---@param self FieldApi
+        ---@param fieldName string
+        ['string'] = function(self, fieldName)
+            
+        end,
+        ---@param self FieldApi
+        ---@param fieldAddress number
+        ['number'] = function(self, fieldAddress)
+            return Protect:Call(self.FindFieldWithAddress, self, fieldAddress)
+        end,
+        ['default'] = function()
+            return {
+                Error = 'Invalid search criteria'
+            }
+        end
+    },
+
+
+    ---@param self FieldApi
+    ---@param fieldSearchCondition number | string
+    Find = function(self, fieldSearchCondition)
+        local FieldsInfo = (self.FindTypeCheck[type(fieldSearchCondition)] or self.FindTypeCheck['default'])(self, fieldSearchCondition)
+        return FieldsInfo
     end
 }
 

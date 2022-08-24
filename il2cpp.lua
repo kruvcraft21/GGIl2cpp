@@ -23,6 +23,16 @@ function getAlfUtf16()
     return Utf16
 end
 
+function getValidStartAddress(Address)
+    local lenAddress = #string.format("%X", Address)
+    local checkTable = {['C'] = true, ['4'] = true, ['8']= true, ['0'] = true}
+    while not checkTable[string.format("%X", Address):sub(lenAddress)] do
+        Address = Address - 1
+    end
+    return Address
+end
+
+
 ---@class Il2cpp
 Il2cpp = {
     il2cppStart = 0,

@@ -1,4 +1,20 @@
----@type ClassApi
+---@class ClassApi
+---@field NameOffset number
+---@field MethodsStep number
+---@field CountMethods number
+---@field MethodsLink number
+---@field FieldsLink number
+---@field FieldsStep number
+---@field CountFields number
+---@field ParentOffset number
+---@field NameSpaceOffset number
+---@field StaticFieldDataOffset number
+---@field EnumType number
+---@field EnumRsh number
+---@field TypeMetadataHandle number
+---@field InstanceSize number
+---@field GetClassName fun(self : ClassApi, ClassAddress : number) : string
+---@field GetClassMethods fun(self : ClassApi, MethodsLink : number, Count : number, ClassName : string | nil) : MethodInfo[]
 local ClassApi = {
     
     
@@ -104,6 +120,10 @@ local ClassApi = {
             { -- TypeMetadataHandle [10]
                 address = ClassInfo.ClassInfoAddress + self.TypeMetadataHandle,
                 flags = Il2cpp.MainType
+            },
+            { -- InstanceSize [11]
+                address = ClassInfo.ClassInfoAddress + self.InstanceSize,
+                flags = gg.TYPE_DWORD
             }
         })
         local ClassName = ClassInfo.ClassName or Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[1].value))
@@ -127,13 +147,27 @@ local ClassApi = {
             ClassNameSpace = Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[7].value)),
             StaticFieldData = _ClassInfo[8].value ~= 0 and Il2cpp.FixValue(_ClassInfo[8].value) or nil,
             IsEnum = ClassCharacteristic.IsEnum,
-            TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle
+            TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle,
+            InstanceSize = _ClassInfo[11].value
         }, {
             __index = Il2cpp.ClassInfoApi
         })
     end,
 
 
+    IsClassInfo = function(Address)
+        local assembly = Il2cpp.FixValue(gg.getValues({{
+            address = Il2cpp.FixValue(Address),
+            flags = Il2cpp.MainType
+        }})[1].value)
+        return Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{
+            address = assembly,
+            flags = Il2cpp.MainType
+        }})[1].value)):find(".dll") ~= nil
+    end,
+
+
+    ---@param self ClassApi
     FindClassWithName = function(self, ClassName)
         gg.clearResults()
         gg.setRanges(0)
@@ -149,11 +183,7 @@ local ClassApi = {
                 address = v.address - self.NameOffset,
                 flags = v.flags
             }})[1]
-            local assembly = Il2cpp.FixValue(MainClass.value)
-            if (Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{
-                address = assembly,
-                flags = v.flags
-            }})[1].value)):find(".dll")) then
+            if (self.IsClassInfo(v.address - self.NameOffset)) then
                 ResultTable[#ResultTable + 1] = {
                     ClassInfoAddress = Il2cpp.FixValue(MainClass.address),
                     ClassName = ClassName

@@ -58,6 +58,7 @@ require("il2cpp")
 ---@field StaticFieldData number | nil
 ---@field IsEnum boolean
 ---@field TypeMetadataHandle number
+---@field InstanceSize number
 ---@field GetFieldWithName fun(self : ClassInfo, name : string) : FieldInfo | nil @Get FieldInfo by Field Name. If Fields weren't dumped, then this function return `nil`. Also, if Field isn't found by name, then function will return `nil`
 ---@field GetMethodsWithName fun(self : ClassInfo, name : string) : MethodInfo[] | nil @Get MethodInfo[] by MethodName. If Methods weren't dumped, then this function return `nil`. Also, if Method isn't found by name, then function will return `table with zero size`
 
@@ -69,40 +70,10 @@ require("il2cpp")
 ---@field FieldInfoAddress number
 ---@field ClassName string | nil
 
----@class FieldApi
----@field Offset number
----@field Type number
----@field ClassOffset number
-
-
----@class ClassApi
----@field NameOffset number
----@field MethodsStep number
----@field CountMethods number
----@field MethodsLink number
----@field FieldsLink number
----@field FieldsStep number
----@field CountFields number
----@field ParentOffset number
----@field NameSpaceOffset number
----@field StaticFieldDataOffset number
----@field EnumType number
----@field EnumRsh number
----@field TypeMetadataHandle number
----@field GetClassName fun(self : ClassApi, ClassAddress : number) : string
----@field GetClassMethods fun(self : ClassApi, MethodsLink : number, Count : number, ClassName : string | nil) : MethodInfo[]
-
 
 ---@class ClassesMemory
 ---@field Config ClassConfig
 ---@field SearchResult ClassInfo[]
-
-
----@class MethodsApi
----@field ClassOffset number
----@field NameOffset number
----@field ParamCount number
----@field ReturnType number
 
 
 ---@class FieldInfo
@@ -156,6 +127,7 @@ require("il2cpp")
 ---@field ClassApiEnumType number
 ---@field ClassApiEnumRsh number
 ---@field ClassApiTypeMetadataHandle number
+---@field ClassApiInstanceSize number
 ---@field MethodsApiClassOffset number
 ---@field MethodsApiNameOffset number
 ---@field MethodsApiParamCount number
@@ -179,8 +151,6 @@ require("il2cpp")
 
 ---@class Il2CppTypeDefinitionApi
 ---@field fieldStart number
-
-
 
 
 
@@ -229,6 +199,16 @@ function getAlfUtf16()
     end
     return Utf16
 end
+
+function getValidStartAddress(Address)
+    local lenAddress = #string.format("%X", Address)
+    local checkTable = {['C'] = true, ['4'] = true, ['8']= true, ['0'] = true}
+    while not checkTable[string.format("%X", Address):sub(lenAddress)] do
+        Address = Address - 1
+    end
+    return Address
+end
+
 
 ---@class Il2cpp
 Il2cpp = {
@@ -623,6 +603,32 @@ local ObjectApi = {
             table.move(FindResult, 1, #FindResult, #Objects + 1, Objects)
         end
         return Objects
+    end,
+
+
+    FindHead = function(Address)
+        local validAddress = getValidStartAddress(Address)
+        local mayBeHead = {}
+        for i = 1, 1000 do
+            mayBeHead[i] = {
+                address = validAddress - (4 * (i - 1)),
+                flags = Il2cpp.MainType
+            } 
+        end
+        mayBeHead = gg.getValues(mayBeHead)
+        for i = 1, #mayBeHead do
+            local mayBeClass = Il2cpp.FixValue(mayBeHead[i].value)
+            if Il2cpp.ClassApi.IsClassInfo(mayBeClass) then
+                return mayBeHead[i].address
+            end
+        end
+        return 0
+    end,
+
+
+    ---@param self ObjectApi
+    Set = function(self, Address)
+        return gg.getValues({{address = self.FindHead(Address), flags = Il2cpp.MainType}})[1]
     end
 }
 
@@ -637,7 +643,23 @@ local AndroidInfo = {
 return AndroidInfo
 end)
 __bundle_register("il2cppstruct.class", function(require, _LOADED, __bundle_register, __bundle_modules)
----@type ClassApi
+---@class ClassApi
+---@field NameOffset number
+---@field MethodsStep number
+---@field CountMethods number
+---@field MethodsLink number
+---@field FieldsLink number
+---@field FieldsStep number
+---@field CountFields number
+---@field ParentOffset number
+---@field NameSpaceOffset number
+---@field StaticFieldDataOffset number
+---@field EnumType number
+---@field EnumRsh number
+---@field TypeMetadataHandle number
+---@field InstanceSize number
+---@field GetClassName fun(self : ClassApi, ClassAddress : number) : string
+---@field GetClassMethods fun(self : ClassApi, MethodsLink : number, Count : number, ClassName : string | nil) : MethodInfo[]
 local ClassApi = {
     
     
@@ -743,6 +765,10 @@ local ClassApi = {
             { -- TypeMetadataHandle [10]
                 address = ClassInfo.ClassInfoAddress + self.TypeMetadataHandle,
                 flags = Il2cpp.MainType
+            },
+            { -- InstanceSize [11]
+                address = ClassInfo.ClassInfoAddress + self.InstanceSize,
+                flags = gg.TYPE_DWORD
             }
         })
         local ClassName = ClassInfo.ClassName or Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[1].value))
@@ -766,13 +792,27 @@ local ClassApi = {
             ClassNameSpace = Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[7].value)),
             StaticFieldData = _ClassInfo[8].value ~= 0 and Il2cpp.FixValue(_ClassInfo[8].value) or nil,
             IsEnum = ClassCharacteristic.IsEnum,
-            TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle
+            TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle,
+            InstanceSize = _ClassInfo[11].value
         }, {
             __index = Il2cpp.ClassInfoApi
         })
     end,
 
 
+    IsClassInfo = function(Address)
+        local assembly = Il2cpp.FixValue(gg.getValues({{
+            address = Il2cpp.FixValue(Address),
+            flags = Il2cpp.MainType
+        }})[1].value)
+        return Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{
+            address = assembly,
+            flags = Il2cpp.MainType
+        }})[1].value)):find(".dll") ~= nil
+    end,
+
+
+    ---@param self ClassApi
     FindClassWithName = function(self, ClassName)
         gg.clearResults()
         gg.setRanges(0)
@@ -788,11 +828,7 @@ local ClassApi = {
                 address = v.address - self.NameOffset,
                 flags = v.flags
             }})[1]
-            local assembly = Il2cpp.FixValue(MainClass.value)
-            if (Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{
-                address = assembly,
-                flags = v.flags
-            }})[1].value)):find(".dll")) then
+            if (self.IsClassInfo(v.address - self.NameOffset)) then
                 ResultTable[#ResultTable + 1] = {
                     ClassInfoAddress = Il2cpp.FixValue(MainClass.address),
                     ClassName = ClassName
@@ -866,7 +902,11 @@ local ClassApi = {
 return ClassApi
 end)
 __bundle_register("il2cppstruct.field", function(require, _LOADED, __bundle_register, __bundle_modules)
----@type FieldApi
+---@class FieldApi
+---@field Offset number
+---@field Type number
+---@field ClassOffset number
+---@field Find fun(self : FieldApi, fieldSearchCondition : string | number)
 local FieldApi = {
 
 
@@ -918,10 +958,6 @@ local FieldApi = {
                     flags = Il2cpp.MainType
                 }
             })
-            -- local DefaultValue = nil
-            -- if ClassCharacteristic.IsEnum and FieldsInfo[i + 1].value == 0 and Il2cpp.MetadataRegistrationApi.metadataRegistration ~= 0 then
-            --     DefaultValue = Il2cpp.GlobalMetadataApi:GetDefaultFieldValue(index + fieldStart - 1)
-            -- end
             _FieldsInfo[index] = setmetatable({
                 ClassName = ClassCharacteristic.ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[i + 3].value),
                 ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[i + 3].value)),
@@ -933,10 +969,70 @@ local FieldApi = {
             },
             {
                 __index = Il2cpp.FieldInfoApi,
-                fieldIndex = fieldStart + index - 1
+                fieldIndex = fieldStart + index - 1,
             })
         end
         return _FieldsInfo
+    end,
+
+
+    FindFieldWithAddress = function(self, fieldAddress)
+        local ResultTable = {}
+        local Il2cppObject = Il2cpp.ObjectApi:Set(fieldAddress)
+        local fieldOffset = fieldAddress - Il2cppObject.address
+        local classAddress = Il2cpp.FixValue(Il2cppObject.value)
+        local Il2cppClass = Il2cpp.FindClass({{Class = classAddress, FieldsDump = true}})[1]
+        local lastFieldInfo
+        for i, v in ipairs(Il2cppClass) do
+            if v.Fields and v.InstanceSize >= fieldOffset then
+                for j = 1, #v.Fields do
+                    local offsetNumber = tonumber(v.Fields[j].Offset, 16)
+                    if offsetNumber > fieldOffset then
+                        ResultTable[#ResultTable + 1] = lastFieldInfo
+                        break;
+                    elseif offsetNumber == fieldOffset then
+                        ResultTable[#ResultTable + 1] = v.Fields[j]
+                        break;
+                    elseif j == #v.Fields then
+                        ResultTable[#ResultTable + 1] = v.Fields[j]
+                        break;
+                    elseif offsetNumber > 0 then
+                        lastFieldInfo = v.Fields[j]
+                    end
+                end
+            end
+        end
+        if (#ResultTable == 0) then
+            error('nothing was found for this address 0x' .. string.format("%X", fieldAddress))
+        end
+        return ResultTable
+    end,
+
+
+    FindTypeCheck = {
+        ---@param self FieldApi
+        ---@param fieldName string
+        ['string'] = function(self, fieldName)
+            
+        end,
+        ---@param self FieldApi
+        ---@param fieldAddress number
+        ['number'] = function(self, fieldAddress)
+            return Protect:Call(self.FindFieldWithAddress, self, fieldAddress)
+        end,
+        ['default'] = function()
+            return {
+                Error = 'Invalid search criteria'
+            }
+        end
+    },
+
+
+    ---@param self FieldApi
+    ---@param fieldSearchCondition number | string
+    Find = function(self, fieldSearchCondition)
+        local FieldsInfo = (self.FindTypeCheck[type(fieldSearchCondition)] or self.FindTypeCheck['default'])(self, fieldSearchCondition)
+        return FieldsInfo
     end
 }
 
@@ -1171,7 +1267,11 @@ end)
 __bundle_register("il2cppstruct.method", function(require, _LOADED, __bundle_register, __bundle_modules)
 AndroidInfo = require("until.androidinfo")
 
----@type MethodsApi
+---@class MethodsApi
+---@field ClassOffset number
+---@field NameOffset number
+---@field ParamCount number
+---@field ReturnType number
 local MethodsApi = {
 
 
@@ -1365,9 +1465,9 @@ local MethodsApi = {
         local _MethodsInfo = (self.FindParamsCheck[type(method)] or self.FindParamsCheck['default'])(self, method)
         if (#_MethodsInfo > 0) then
             local MethodsInfo = {}
-            for k = 1, #_MethodsInfo do
+            for i = 1, #_MethodsInfo do
                 local MethodInfo
-                MethodInfo, _MethodsInfo[k] = self:UnpackMethodInfo(_MethodsInfo[k])
+                MethodInfo, _MethodsInfo[i] = self:UnpackMethodInfo(_MethodsInfo[i])
                 table.move(MethodInfo, 1, #MethodInfo, #MethodsInfo + 1, MethodsInfo)
             end
             MethodsInfo = gg.getValues(MethodsInfo)
@@ -1688,6 +1788,7 @@ local VersionEngine = {
             Il2cpp.ClassApi.EnumType = api.ClassApiEnumType
             Il2cpp.ClassApi.EnumRsh = api.ClassApiEnumRsh
             Il2cpp.ClassApi.TypeMetadataHandle = api.ClassApiTypeMetadataHandle
+            Il2cpp.ClassApi.InstanceSize = api.ClassApiInstanceSize
 
             Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
             Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
@@ -1808,6 +1909,7 @@ Il2cppApi = {
         ClassApiEnumType = AndroidInfo.platform and 0x126 or 0xBE,
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
+        ClassApiInstanceSize = AndroidInfo.platform and 0xEC or 0x84,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -1839,6 +1941,7 @@ Il2cppApi = {
         ClassApiEnumType = AndroidInfo.platform and 0x129 or 0xC1,
         ClassApiEnumRsh = 2,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
+        ClassApiInstanceSize = AndroidInfo.platform and 0xF0 or 0x88,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4E or 0x2E,
@@ -1870,6 +1973,7 @@ Il2cppApi = {
         ClassApiEnumType = AndroidInfo.platform and 0x12e or 0xBA,
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
+        ClassApiInstanceSize = AndroidInfo.platform and 0xF4 or 0x80,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -1901,6 +2005,7 @@ Il2cppApi = {
         ClassApiEnumType = AndroidInfo.platform and 0x12e or 0xBA,
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
+        ClassApiInstanceSize = AndroidInfo.platform and 0xF4 or 0x80,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -1932,6 +2037,7 @@ Il2cppApi = {
         ClassApiEnumType = AndroidInfo.platform and 0x12e or 0xBA,
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
+        ClassApiInstanceSize = AndroidInfo.platform and 0xF4 or 0x80,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -1963,6 +2069,7 @@ Il2cppApi = {
         ClassApiEnumType = AndroidInfo.platform and 0x12e or 0xBA,
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
+        ClassApiInstanceSize = AndroidInfo.platform and 0xF4 or 0x80,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -1994,6 +2101,7 @@ Il2cppApi = {
         ClassApiEnumType = AndroidInfo.platform and 0x132 or 0xBA,
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
+        ClassApiInstanceSize = AndroidInfo.platform and 0xF8 or 0x80,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -2025,6 +2133,7 @@ Il2cppApi = {
         ClassApiEnumType = AndroidInfo.platform and 0x132 or 0xBA,
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
+        ClassApiInstanceSize = AndroidInfo.platform and 0xF8 or 0x80,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -2056,6 +2165,7 @@ Il2cppApi = {
         ClassApiEnumType = AndroidInfo.platform and 0x132 or 0xBA,
         ClassApiEnumRsh = 2,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
+        ClassApiInstanceSize = AndroidInfo.platform and 0xF8 or 0x80,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -2087,6 +2197,7 @@ Il2cppApi = {
         ClassApiEnumType = AndroidInfo.platform and 0x132 or 0xBA,
         ClassApiEnumRsh = 2,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
+        ClassApiInstanceSize = AndroidInfo.platform and 0xF8 or 0x80,
         MethodsApiClassOffset = AndroidInfo.platform and 0x20 or 0x10,
         MethodsApiNameOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiParamCount = AndroidInfo.platform and 0x52 or 0x2E,

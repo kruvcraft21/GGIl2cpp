@@ -15,6 +15,7 @@ require("il2cpp")
 ---@field StaticFieldData number | nil
 ---@field IsEnum boolean
 ---@field TypeMetadataHandle number
+---@field InstanceSize number
 ---@field GetFieldWithName fun(self : ClassInfo, name : string) : FieldInfo | nil @Get FieldInfo by Field Name. If Fields weren't dumped, then this function return `nil`. Also, if Field isn't found by name, then function will return `nil`
 ---@field GetMethodsWithName fun(self : ClassInfo, name : string) : MethodInfo[] | nil @Get MethodInfo[] by MethodName. If Methods weren't dumped, then this function return `nil`. Also, if Method isn't found by name, then function will return `table with zero size`
 
@@ -26,40 +27,10 @@ require("il2cpp")
 ---@field FieldInfoAddress number
 ---@field ClassName string | nil
 
----@class FieldApi
----@field Offset number
----@field Type number
----@field ClassOffset number
-
-
----@class ClassApi
----@field NameOffset number
----@field MethodsStep number
----@field CountMethods number
----@field MethodsLink number
----@field FieldsLink number
----@field FieldsStep number
----@field CountFields number
----@field ParentOffset number
----@field NameSpaceOffset number
----@field StaticFieldDataOffset number
----@field EnumType number
----@field EnumRsh number
----@field TypeMetadataHandle number
----@field GetClassName fun(self : ClassApi, ClassAddress : number) : string
----@field GetClassMethods fun(self : ClassApi, MethodsLink : number, Count : number, ClassName : string | nil) : MethodInfo[]
-
 
 ---@class ClassesMemory
 ---@field Config ClassConfig
 ---@field SearchResult ClassInfo[]
-
-
----@class MethodsApi
----@field ClassOffset number
----@field NameOffset number
----@field ParamCount number
----@field ReturnType number
 
 
 ---@class FieldInfo
@@ -113,6 +84,7 @@ require("il2cpp")
 ---@field ClassApiEnumType number
 ---@field ClassApiEnumRsh number
 ---@field ClassApiTypeMetadataHandle number
+---@field ClassApiInstanceSize number
 ---@field MethodsApiClassOffset number
 ---@field MethodsApiNameOffset number
 ---@field MethodsApiParamCount number
@@ -136,8 +108,6 @@ require("il2cpp")
 
 ---@class Il2CppTypeDefinitionApi
 ---@field fieldStart number
-
-
 
 
 

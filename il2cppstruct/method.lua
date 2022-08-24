@@ -1,6 +1,10 @@
 AndroidInfo = require("until.androidinfo")
 
----@type MethodsApi
+---@class MethodsApi
+---@field ClassOffset number
+---@field NameOffset number
+---@field ParamCount number
+---@field ReturnType number
 local MethodsApi = {
 
 
@@ -194,9 +198,9 @@ local MethodsApi = {
         local _MethodsInfo = (self.FindParamsCheck[type(method)] or self.FindParamsCheck['default'])(self, method)
         if (#_MethodsInfo > 0) then
             local MethodsInfo = {}
-            for k = 1, #_MethodsInfo do
+            for i = 1, #_MethodsInfo do
                 local MethodInfo
-                MethodInfo, _MethodsInfo[k] = self:UnpackMethodInfo(_MethodsInfo[k])
+                MethodInfo, _MethodsInfo[i] = self:UnpackMethodInfo(_MethodsInfo[i])
                 table.move(MethodInfo, 1, #MethodInfo, #MethodsInfo + 1, MethodsInfo)
             end
             MethodsInfo = gg.getValues(MethodsInfo)
