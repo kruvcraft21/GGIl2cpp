@@ -61,6 +61,7 @@ require("il2cpp")
 ---@field InstanceSize number
 ---@field GetFieldWithName fun(self : ClassInfo, name : string) : FieldInfo | nil @Get FieldInfo by Field Name. If Fields weren't dumped, then this function return `nil`. Also, if Field isn't found by name, then function will return `nil`
 ---@field GetMethodsWithName fun(self : ClassInfo, name : string) : MethodInfo[] | nil @Get MethodInfo[] by MethodName. If Methods weren't dumped, then this function return `nil`. Also, if Method isn't found by name, then function will return `table with zero size`
+---@field GetFieldWithOffset fun(self : ClassInfo, fieldOffset : number) : FieldInfo | nil
 
 ---@class ParentClassInfo
 ---@field ClassName string
@@ -153,15 +154,6 @@ require("il2cpp")
 ---@field fieldStart number
 
 
-
----@class Il2cppMemory
----@field Methods table<number | string, MethodInfo[] | ErrorSearch>
----@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
----@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
----@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
----@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
----@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : ClassConfig) : ClassInfo[] | nil | ErrorSearch
----@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
 
 Protect = {
     ErrorHandler = function(err)
@@ -321,6 +313,24 @@ Il2cpp = {
     end,
 
 
+    ---@generic TypeForSearch : number | string
+    ---@param searchParams TypeForSearch[] @TypeForSearch = number | string
+    ---@return table<number, FieldApi[] | ErrorSearch>
+    FindFields = function(searchParams)
+        for i = 1, #searchParams do
+            ---@type number | string
+            local searchParam = searchParams[i]
+            local searchResult = Il2cppMemory:GetInformaionOfField(searchParam)
+            if not searchResult then
+                searchResult = Il2cpp.FieldApi:Find(searchParam)
+                Il2cppMemory:SetInformaionOfField(searchParam, searchResult)
+            end
+            searchParams[i] = searchResult
+        end
+        return searchParams
+    end,
+
+
     ---@param Address number
     ---@param length? number
     ---@return string
@@ -430,6 +440,7 @@ Il2cpp = setmetatable(Il2cpp, {
 
         Il2cppMemory.Methods = {}
         Il2cppMemory.Classes = {}
+        Il2cppMemory.Fields = {}
     end
 })
 
@@ -521,6 +532,68 @@ local ClassInfoApi = {
                 self.ClassName)
             return self:GetMethodsWithName(name)
         end
+    end,
+
+
+    ---@param self ClassInfo
+    ---@param fieldOffset number
+    ---@return nil | FieldInfo
+    GetFieldWithOffset = function(self, fieldOffset)
+        if not self.Fields then
+            local ClassAddress = tonumber(self.ClassAddress, 16)
+            local _ClassInfo = gg.getValues({
+                { -- Link as Fields
+                    address = ClassAddress + Il2cpp.ClassApi.FieldsLink,
+                    flags = Il2cpp.MainType
+                },
+                { -- Fields Count
+                    address = ClassAddress + Il2cpp.ClassApi.CountFields,
+                    flags = gg.TYPE_WORD
+                }
+            })
+            self.Fields = Il2cpp.ClassApi:GetClassFields(Il2cpp.FixValue(_ClassInfo[1].value), _ClassInfo[2].value, {
+                ClassName = self.ClassName,
+                IsEnum = self.IsEnum,
+                TypeMetadataHandle = self.TypeMetadataHandle
+            })
+        end
+        if #self.Fields > 0 then
+            local klass = self
+            while klass ~= nil do
+                if klass.Fields and klass.InstanceSize >= fieldOffset then
+                    local firstFieldInfo
+                    local lastFieldInfo
+                    for j = 1, #klass.Fields do
+                        if not klass.Fields[j].IsStatic then
+                            local offsetNumber = tonumber(klass.Fields[j].Offset, 16)
+                            if not firstFieldInfo then
+                                firstFieldInfo = offsetNumber
+                            end
+                            if firstFieldInfo and fieldOffset >= firstFieldInfo then
+                                if offsetNumber >= fieldOffset then
+                                    return offsetNumber == fieldOffset 
+                                        and klass.Fields[j] 
+                                        or lastFieldInfo
+                                elseif j == #klass.Fields then
+                                    return klass.Fields[j]
+                                elseif offsetNumber > 0 then
+                                    lastFieldInfo = klass.Fields[j]
+                                end
+                            end 
+                        end
+                    end
+                end
+                klass = klass.Parent ~= nil 
+                    and Il2cpp.FindClass({
+                        {
+                            Class = tonumber(klass.Parent.ClassAddress, 16), 
+                            FieldsDump = true
+                        }
+                    })[1][1] 
+                    or nil
+            end
+        end
+        return nil
     end
 }
 
@@ -906,31 +979,26 @@ __bundle_register("il2cppstruct.field", function(require, _LOADED, __bundle_regi
 ---@field Offset number
 ---@field Type number
 ---@field ClassOffset number
----@field Find fun(self : FieldApi, fieldSearchCondition : string | number)
+---@field Find fun(self : FieldApi, fieldSearchCondition : string | number) : FieldInfo[] | ErrorSearch
 local FieldApi = {
 
 
     ---@param self FieldApi
     ---@param FieldInfoAddress number
     UnpackFieldInfo = function(self, FieldInfoAddress)
-        return {
-            { -- Field Name
-                address = FieldInfoAddress,
-                flags = Il2cpp.MainType
-            },
-            { -- Offset Field
-                address = FieldInfoAddress + self.Offset,
-                flags = gg.TYPE_WORD
-            },
-            { -- Field type
-                address = FieldInfoAddress + self.Type,
-                flags = Il2cpp.MainType
-            },
-            { -- Class address
-                address = FieldInfoAddress + self.ClassOffset,
-                flags = Il2cpp.MainType
-            }
-        }
+        return {{ -- Field Name
+            address = FieldInfoAddress,
+            flags = Il2cpp.MainType
+        }, { -- Offset Field
+            address = FieldInfoAddress + self.Offset,
+            flags = gg.TYPE_WORD
+        }, { -- Field type
+            address = FieldInfoAddress + self.Type,
+            flags = Il2cpp.MainType
+        }, { -- Class address
+            address = FieldInfoAddress + self.ClassOffset,
+            flags = Il2cpp.MainType
+        }}
     end,
 
 
@@ -944,20 +1012,16 @@ local FieldApi = {
         for i = 1, #FieldsInfo, 4 do
             index = index + 1
             local TypeInfo = Il2cpp.FixValue(FieldsInfo[i + 2].value)
-            local _TypeInfo = gg.getValues({
-                {
-                    address = TypeInfo + self.Type,
-                    flags = gg.TYPE_WORD
-                },
-                { -- type index
-                    address = TypeInfo + Il2cpp.TypeApi.Type,
-                    flags = gg.TYPE_BYTE
-                },
-                { -- index
-                    address = TypeInfo,
-                    flags = Il2cpp.MainType
-                }
-            })
+            local _TypeInfo = gg.getValues({{
+                address = TypeInfo + self.Type,
+                flags = gg.TYPE_WORD
+            }, { -- type index
+                address = TypeInfo + Il2cpp.TypeApi.Type,
+                flags = gg.TYPE_BYTE
+            }, { -- index
+                address = TypeInfo,
+                flags = Il2cpp.MainType
+            }})
             _FieldsInfo[index] = setmetatable({
                 ClassName = ClassCharacteristic.ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[i + 3].value),
                 ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[i + 3].value)),
@@ -965,14 +1029,48 @@ local FieldApi = {
                 Offset = string.format('%X', FieldsInfo[i + 1].value),
                 IsStatic = (_TypeInfo[1].value & 0x10) ~= 0,
                 Type = Il2cpp.TypeApi:GetTypeName(_TypeInfo[2].value, _TypeInfo[3].value),
-                IsConst = (_TypeInfo[1].value & 0x40) ~= 0,
-            },
-            {
+                IsConst = (_TypeInfo[1].value & 0x40) ~= 0
+            }, {
                 __index = Il2cpp.FieldInfoApi,
-                fieldIndex = fieldStart + index - 1,
+                fieldIndex = fieldStart + index - 1
             })
         end
         return _FieldsInfo
+    end,
+
+
+    ---@param self FieldApi
+    ---@param fieldName string
+    ---@return FieldInfo[]
+    FindFieldWithName = function(self, fieldName)
+        gg.clearResults()
+        gg.setRanges(0)
+        gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
+                         gg.REGION_OTHER | gg.REGION_C_ALLOC)
+        gg.searchNumber("Q 00 '" .. fieldName .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
+            Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
+        gg.searchPointer(0)
+        local fieldNamePoint, ResultTable = gg.getResults(gg.getResultsCount()), {}
+        gg.clearResults()
+        for k, v in ipairs(fieldNamePoint) do
+            local classAddress = gg.getValues({{
+                address = v.address + self.ClassOffset,
+                flags = Il2cpp.MainType
+            }})[1].value
+            if Il2cpp.ClassApi.IsClassInfo(classAddress) then
+                local Il2cppClass = Il2cpp.FindClass({{
+                    Class = classAddress,
+                    FieldsDump = true
+                }})[1]
+                for i, class in ipairs(Il2cppClass) do
+                    ResultTable[#ResultTable + 1] = class:GetFieldWithName(fieldName)
+                end
+            end
+        end
+        if (#ResultTable == 0) then
+            error('the "' .. fieldName .. '" field pointer was not found')
+        end
+        return ResultTable
     end,
 
 
@@ -981,26 +1079,12 @@ local FieldApi = {
         local Il2cppObject = Il2cpp.ObjectApi:Set(fieldAddress)
         local fieldOffset = fieldAddress - Il2cppObject.address
         local classAddress = Il2cpp.FixValue(Il2cppObject.value)
-        local Il2cppClass = Il2cpp.FindClass({{Class = classAddress, FieldsDump = true}})[1]
-        local lastFieldInfo
+        local Il2cppClass = Il2cpp.FindClass({{
+            Class = classAddress,
+            FieldsDump = true
+        }})[1]
         for i, v in ipairs(Il2cppClass) do
-            if v.Fields and v.InstanceSize >= fieldOffset then
-                for j = 1, #v.Fields do
-                    local offsetNumber = tonumber(v.Fields[j].Offset, 16)
-                    if offsetNumber > fieldOffset then
-                        ResultTable[#ResultTable + 1] = lastFieldInfo
-                        break;
-                    elseif offsetNumber == fieldOffset then
-                        ResultTable[#ResultTable + 1] = v.Fields[j]
-                        break;
-                    elseif j == #v.Fields then
-                        ResultTable[#ResultTable + 1] = v.Fields[j]
-                        break;
-                    elseif offsetNumber > 0 then
-                        lastFieldInfo = v.Fields[j]
-                    end
-                end
-            end
+            ResultTable[#ResultTable + 1] = v:GetFieldWithOffset(fieldOffset)
         end
         if (#ResultTable == 0) then
             error('nothing was found for this address 0x' .. string.format("%X", fieldAddress))
@@ -1013,7 +1097,7 @@ local FieldApi = {
         ---@param self FieldApi
         ---@param fieldName string
         ['string'] = function(self, fieldName)
-            
+            return Protect:Call(self.FindFieldWithName, self, fieldName)
         end,
         ---@param self FieldApi
         ---@param fieldAddress number
@@ -1030,6 +1114,7 @@ local FieldApi = {
 
     ---@param self FieldApi
     ---@param fieldSearchCondition number | string
+    ---@return FieldInfo[] | ErrorSearch
     Find = function(self, fieldSearchCondition)
         local FieldsInfo = (self.FindTypeCheck[type(fieldSearchCondition)] or self.FindTypeCheck['default'])(self, fieldSearchCondition)
         return FieldsInfo
@@ -1037,6 +1122,7 @@ local FieldApi = {
 }
 
 return FieldApi
+
 end)
 __bundle_register("il2cppstruct.globalmetadata", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class GlobalMetadataApi
@@ -1279,18 +1365,17 @@ local MethodsApi = {
     ---@param MethodName string
     ---@return MethodInfoRaw[]
     FindMethodWithName = function(self, MethodName)
-        local FinalMethods, name = {}, "00 " .. MethodName:gsub('.', function(c)
-            return string.format('%02X', string.byte(c)) .. " "
-        end) .. "00"
+        local FinalMethods = {}
         gg.clearResults()
         gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
                          gg.REGION_OTHER)
-        gg.searchNumber('h ' .. name, gg.TYPE_BYTE, false, gg.SIGN_EQUAL, Il2cpp.globalMetadataStart,
+        gg.searchNumber("Q 00 '" .. MethodName .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, Il2cpp.globalMetadataStart,
             Il2cpp.globalMetadataEnd)
         if gg.getResultsCount() == 0 then
             error('the "' .. MethodName .. '" function was not found')
         end
-        gg.refineNumber('h ' .. string.sub(name, 4, 5))
+        gg.refineNumber("Q 00 '".. MethodName:sub(1, 1) .. "'")
+        gg.refineNumber("Q '".. MethodName:sub(1, 1) .. "'")
         local r = gg.getResults(gg.getResultsCount())
         gg.clearResults()
         for j = 1, #r do
@@ -1841,10 +1926,37 @@ return VersionEngine
 end)
 __bundle_register("until.il2cppmemory", function(require, _LOADED, __bundle_register, __bundle_modules)
 -- Memorizing Il2cpp Search Result
----@type Il2cppMemory
+---@class Il2cppMemory
+---@field Methods table<number | string, MethodInfo[] | ErrorSearch>
+---@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
+---@field Fields table<number | string, FieldInfo[] | ErrorSearch>
+---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
+---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
+---@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
+---@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : ClassConfig) : ClassInfo[] | nil | ErrorSearch
+---@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
+---@field GetInformaionOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
+---@field SetInformaionOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
 local Il2cppMemory = {
     Methods = {},
     Classes = {},
+    Fields = {},
+
+
+    ---@param self Il2cppMemory
+    ---@param searchParam number | string
+    ---@return FieldInfo[] | nil | ErrorSearch
+    GetInformaionOfField = function(self, searchParam)
+        return self.Fields[searchParam]
+    end,
+
+
+    ---@param self Il2cppMemory
+    ---@param searchParam number | string
+    ---@param searchResult FieldInfo[] | ErrorSearch
+    SetInformaionOfField = function(self, searchParam, searchResult)
+        self.Fields[searchParam] = searchResult
+    end,
 
 
     GetInformaionOfMethod = function(self, searchParam)
