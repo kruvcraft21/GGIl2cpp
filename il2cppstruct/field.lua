@@ -106,25 +106,8 @@ local FieldApi = {
             Class = classAddress,
             FieldsDump = true
         }})[1]
-        local lastFieldInfo
         for i, v in ipairs(Il2cppClass) do
-            if v.Fields and v.InstanceSize >= fieldOffset then
-                for j = 1, #v.Fields do
-                    local offsetNumber = tonumber(v.Fields[j].Offset, 16)
-                    if offsetNumber > fieldOffset then
-                        ResultTable[#ResultTable + 1] = lastFieldInfo
-                        break
-                    elseif offsetNumber == fieldOffset then
-                        ResultTable[#ResultTable + 1] = v.Fields[j]
-                        break
-                    elseif j == #v.Fields then
-                        ResultTable[#ResultTable + 1] = v.Fields[j]
-                        break
-                    elseif offsetNumber > 0 then
-                        lastFieldInfo = v.Fields[j]
-                    end
-                end
-            end
+            ResultTable[#ResultTable + 1] = v:GetFieldWithOffset(fieldOffset)
         end
         if (#ResultTable == 0) then
             error('nothing was found for this address 0x' .. string.format("%X", fieldAddress))
