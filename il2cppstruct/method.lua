@@ -12,18 +12,17 @@ local MethodsApi = {
     ---@param MethodName string
     ---@return MethodInfoRaw[]
     FindMethodWithName = function(self, MethodName)
-        local FinalMethods, name = {}, "00 " .. MethodName:gsub('.', function(c)
-            return string.format('%02X', string.byte(c)) .. " "
-        end) .. "00"
+        local FinalMethods = {}
         gg.clearResults()
         gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
                          gg.REGION_OTHER)
-        gg.searchNumber('h ' .. name, gg.TYPE_BYTE, false, gg.SIGN_EQUAL, Il2cpp.globalMetadataStart,
+        gg.searchNumber("Q 00 '" .. MethodName .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, Il2cpp.globalMetadataStart,
             Il2cpp.globalMetadataEnd)
         if gg.getResultsCount() == 0 then
             error('the "' .. MethodName .. '" function was not found')
         end
-        gg.refineNumber('h ' .. string.sub(name, 4, 5))
+        gg.refineNumber("Q 00 '".. MethodName:sub(1, 1) .. "'")
+        gg.refineNumber("Q '".. MethodName:sub(1, 1) .. "'")
         local r = gg.getResults(gg.getResultsCount())
         gg.clearResults()
         for j = 1, #r do

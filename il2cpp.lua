@@ -144,6 +144,24 @@ Il2cpp = {
     end,
 
 
+    ---@generic TypeForSearch : number | string
+    ---@param searchParams TypeForSearch[] @TypeForSearch = number | string
+    ---@return table<number, FieldApi[] | ErrorSearch>
+    FindFields = function(searchParams)
+        for i = 1, #searchParams do
+            ---@type number | string
+            local searchParam = searchParams[i]
+            local searchResult = Il2cppMemory:GetInformaionOfField(searchParam)
+            if not searchResult then
+                searchResult = Il2cpp.FieldApi:Find(searchParam)
+                Il2cppMemory:SetInformaionOfField(searchParam, searchResult)
+            end
+            searchParams[i] = searchResult
+        end
+        return searchParams
+    end,
+
+
     ---@param Address number
     ---@param length? number
     ---@return string
@@ -253,6 +271,7 @@ Il2cpp = setmetatable(Il2cpp, {
 
         Il2cppMemory.Methods = {}
         Il2cppMemory.Classes = {}
+        Il2cppMemory.Fields = {}
     end
 })
 

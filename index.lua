@@ -111,15 +111,6 @@ require("il2cpp")
 
 
 
----@class Il2cppMemory
----@field Methods table<number | string, MethodInfo[] | ErrorSearch>
----@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
----@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
----@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
----@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
----@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : ClassConfig) : ClassInfo[] | nil | ErrorSearch
----@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
-
 Protect = {
     ErrorHandler = function(err)
         return {Error = err}
