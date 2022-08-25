@@ -313,6 +313,9 @@ Il2cpp = {
     end,
 
 
+    --- Searches for a field, or rather information about the field, by name or by address in memory.
+    --- 
+    --- Return table with information about fields.
     ---@generic TypeForSearch : number | string
     ---@param searchParams TypeForSearch[] @TypeForSearch = number | string
     ---@return table<number, FieldApi[] | ErrorSearch>

@@ -1,9 +1,11 @@
 # Il2cpp Module for GameGuardian
 
 ## About script
-This script is only needed to make it easier to work with Il2cpp. This script works through the program [GameGuardian](https://gameguardian.net). With the help of the module, you can get information about the method or class that interests you. 
+This script is only needed to make it easier to work with Il2cpp. This script works through the program [GameGuardian](https://gameguardian.net). With the help of the module, you can get information about the method or class that interests you. This script is not positioned as a dumper, and is only needed to simplify working with Il2cpp.
 
 The module has support for the [Lua](https://marketplace.visualstudio.com/items?itemName=yinfei.luahelper) plugin for [VS Code](https://code.visualstudio.com/), that is, some functions have a description that this plugin can display.
+
+The script is divided and available for assembly. You can also use an already built version from the [build](/build/) folder or from the [Releases](https://github.com/kruvcraft21/GGIl2cpp/releases/latest) tab.
 
 
 ## About Module
@@ -16,14 +18,16 @@ Il2cpp.FindMethods()
 Il2cpp.FindClass()
 Il2cpp.PatchesAddress()
 Il2cpp.FindObject()
+Il2cpp.FindFields()
 ```
 
 
-* "Il2cpp()" - This function takes from 0 to 2 arguments, it is needed to indicate the beginning of global-metadata and libil2cpp. Without it, the function located in the Il2cpp table will not work.
-* "Il2cpp.FindMethods()" - Searches for a method, or rather information on the method, by name or by offset, you can also send an address in memory to it.
-* "Il2cpp.FindClass()" - Searches for a class, by name, or by address in memory.
-* "Il2cpp.PatchesAddress()" - Patch `Bytescodes` to `add`
-* "Il2cpp.FindObject()" - Searches for an object by name or by class address, in memory. In some cases, the function may return an incorrect result for certain classes. For example, sometimes the garbage collector may not have time to remove an object from memory and then a `fake object` will appear or for a turnover, the object may still be `not implemented` or `not created`.
+* `Il2cpp()` - This function takes from 0 to 2 arguments, it is needed to indicate the beginning of global-metadata and libil2cpp. Without it, the function located in the Il2cpp table will not work.
+* `Il2cpp.FindMethods()` - Searches for a method, or rather information on the method, by name or by offset, you can also send an address in memory to it.
+* `Il2cpp.FindClass()` - Searches for a class, by name, or by address in memory.
+* `Il2cpp.PatchesAddress()` - Patch `Bytescodes` to `add`
+* `Il2cpp.FindObject()` - Searches for an object by name or by class address, in memory. In some cases, the function may return an incorrect result for certain classes. For example, sometimes the garbage collector may not have time to remove an object from memory and then a `fake object` will appear or for a turnover, the object may still be `not implemented` or `not created`.
+* `Il2cpp.FindFields()` - Searches for a field, or rather information about the field, by name or by address in memory.
 
 ## How to use
 
@@ -184,6 +188,33 @@ arm64:
 
 
 ```
+
+Example of how `Il2cpp.FindFields()` works:
+```lua
+require('Il2cppApi')
+
+Il2cpp()
+
+print(Il2cpp.FindFields({'field1'}))
+
+--output
+--[[
+{
+    [1] = {
+        [1] = {
+            ['ClassName'] = 'MyClass',
+            ['ClassAddress'] = '',-- some number in hex
+            ['FieldName'] = 'field1',
+            ['Offset'] = '4', -- hex
+            ['IsConst'] = false,
+            ['IsStatic'] = false,
+            ['Type'] = 'int',
+        },
+    },
+}
+]]
+```
+
 Without the `Il2cpp()` function, some functions will not work, since this function remembers or finds the location `libil2cpp.so` and `global-metadata.dat`. You can also specify the version of `Il2cpp`, this will be required in cases where the module cannot determine the version itself.
 
 Example of using this function:
