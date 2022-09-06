@@ -318,7 +318,7 @@ Il2cpp = {
     --- Return table with information about fields.
     ---@generic TypeForSearch : number | string
     ---@param searchParams TypeForSearch[] @TypeForSearch = number | string
-    ---@return table<number, FieldApi[] | ErrorSearch>
+    ---@return table<number, FieldInfo[] | ErrorSearch>
     FindFields = function(searchParams)
         for i = 1, #searchParams do
             ---@type number | string
@@ -338,11 +338,11 @@ Il2cpp = {
     ---@param length? number
     ---@return string
     Utf8ToString = function(Address, length)
+        local chars, char = {}, {
+            address = Address,
+            flags = gg.TYPE_BYTE
+        }
         if not length then
-            local chars, char = {}, {
-                address = Address,
-                flags = gg.TYPE_BYTE
-            }
             repeat
                 _char = gg.getValues({char})[1].value
                 chars[#chars + 1] = string.char(_char & 0xFF)
@@ -350,10 +350,6 @@ Il2cpp = {
             until _char <= 0
             return table.concat(chars, "", 1, #chars - 1)
         else
-            local chars, char = {}, {
-                address = Address,
-                flags = gg.TYPE_BYTE
-            }
             for i = 1, length do
                 local _char = gg.getValues({char})[1].value
                 chars[i] = string.char(_char & 0xFF)
@@ -627,7 +623,7 @@ local ObjectApi = {
                 gg.searchNumber(tostring(v.address | 0xB400000000000000), gg.TYPE_QWORD)
                 ---@type tablelib
                 local RefToObject = gg.getResults(gg.getResultsCount())
-                RefToObject:move(1, #RefToObject, #FixRefToObjects + 1, FixRefToObjects)
+                table.move(RefToObject, 1, #RefToObject, #FixRefToObjects + 1, FixRefToObjects)
                 gg.clearResults()
             end
             gg.loadResults(FixRefToObjects)
@@ -890,21 +886,14 @@ local ClassApi = {
 
     ---@param self ClassApi
     FindClassWithName = function(self, ClassName)
-        gg.clearResults()
-        gg.setRanges(0)
-        gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
-                         gg.REGION_OTHER | gg.REGION_C_ALLOC)
-        gg.searchNumber("Q 00 '" .. ClassName .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
-            Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
-        gg.searchPointer(0)
-        local ClassNamePoint, ResultTable = gg.getResults(gg.getResultsCount()), {}
-        gg.clearResults()
+        local ClassNamePoint = Il2cpp.GlobalMetadataApi.GetPointersToString(ClassName)
+        local ResultTable = {}
         for k, v in ipairs(ClassNamePoint) do
             local MainClass = gg.getValues({{
                 address = v.address - self.NameOffset,
                 flags = v.flags
             }})[1]
-            if (self.IsClassInfo(v.address - self.NameOffset)) then
+            if (self.IsClassInfo(MainClass.address)) then
                 ResultTable[#ResultTable + 1] = {
                     ClassInfoAddress = Il2cpp.FixValue(MainClass.address),
                     ClassName = ClassName
@@ -918,15 +907,10 @@ local ClassApi = {
     end,
 
 
+    ---@param self ClassApi
     FindClassWithAddressInMemory = function(self, ClassAddress)
-        local assembly, ResultTable = Il2cpp.FixValue(gg.getValues({{
-            address = ClassAddress,
-            flags = Il2cpp.MainType
-        }})[1].value), {}
-        if (Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{
-            address = assembly,
-            flags = Il2cpp.MainType
-        }})[1].value)):find(".dll")) then
+        local ResultTable = {}
+        if self.IsClassInfo(ClassAddress) then
             ResultTable[#ResultTable + 1] = {
                 ClassInfoAddress = ClassAddress
             }
@@ -1046,15 +1030,8 @@ local FieldApi = {
     ---@param fieldName string
     ---@return FieldInfo[]
     FindFieldWithName = function(self, fieldName)
-        gg.clearResults()
-        gg.setRanges(0)
-        gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
-                         gg.REGION_OTHER | gg.REGION_C_ALLOC)
-        gg.searchNumber("Q 00 '" .. fieldName .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
-            Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
-        gg.searchPointer(0)
-        local fieldNamePoint, ResultTable = gg.getResults(gg.getResultsCount()), {}
-        gg.clearResults()
+        local fieldNamePoint = Il2cpp.GlobalMetadataApi.GetPointersToString(fieldName)
+        local ResultTable = {}
         for k, v in ipairs(fieldNamePoint) do
             local classAddress = gg.getValues({{
                 address = v.address + self.ClassOffset,
@@ -1348,6 +1325,22 @@ local GlobalMetadataApi = {
             return behavior
         end
         return nil
+    end,
+
+
+    ---@param name string
+    GetPointersToString = function(name)
+        local pointers = {}
+        gg.clearResults()
+        gg.setRanges(0)
+        gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
+                         gg.REGION_OTHER | gg.REGION_C_ALLOC)
+        gg.searchNumber("Q 00 '" .. name .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
+            Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
+        gg.searchPointer(0)
+        pointers = gg.getResults(gg.getResultsCount())
+        gg.clearResults()
+        return pointers
     end
 }
 
@@ -1369,41 +1362,16 @@ local MethodsApi = {
     ---@return MethodInfoRaw[]
     FindMethodWithName = function(self, MethodName)
         local FinalMethods = {}
-        gg.clearResults()
-        gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
-                         gg.REGION_OTHER)
-        gg.searchNumber("Q 00 '" .. MethodName .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, Il2cpp.globalMetadataStart,
-            Il2cpp.globalMetadataEnd)
-        if gg.getResultsCount() == 0 then
-            error('the "' .. MethodName .. '" function was not found')
-        end
-        gg.refineNumber("Q 00 '".. MethodName:sub(1, 1) .. "'")
-        gg.refineNumber("Q '".. MethodName:sub(1, 1) .. "'")
-        local r = gg.getResults(gg.getResultsCount())
-        gg.clearResults()
-        for j = 1, #r do
-            if gg.BUILD < 16126 then
-                gg.searchNumber(string.format("%8.8X", Il2cpp.FixValue(r[j].address)) .. 'h', self.MainType)
-            else
-                gg.loadResults({r[j]})
-                gg.searchPointer(0)
-            end
-            if gg.getResultsCount() <= 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
-                gg.searchNumber(tostring(tonumber(Il2cpp.FixValue(r[j].address), 16) | 0xB400000000000000),
-                    gg.TYPE_QWORD)
-            end
-            local MethodsInfo = gg.getResults(gg.getResultsCount())
-            gg.clearResults()
-            for k, v in ipairs(MethodsInfo) do
-                v.address = v.address - self.NameOffset
-                local FinalAddress = Il2cpp.FixValue(gg.getValues({v})[1].value)
-                if (FinalAddress > Il2cpp.il2cppStart and FinalAddress < Il2cpp.il2cppEnd) then
-                    FinalMethods[#FinalMethods + 1] = {
-                        MethodName = MethodName,
-                        MethodAddress = FinalAddress,
-                        MethodInfoAddress = v.address
-                    }
-                end
+        local MethodNamePointers = Il2cpp.GlobalMetadataApi.GetPointersToString(MethodName)
+        for i,v in ipairs(MethodNamePointers) do
+            v.address = v.address - self.NameOffset
+            local MethodAddress = Il2cpp.FixValue(gg.getValues({v})[1].value)
+            if MethodAddress > Il2cpp.il2cppStart and MethodAddress < Il2cpp.il2cppEnd then
+                FinalMethods[#FinalMethods + 1] = {
+                    MethodName = MethodName,
+                    MethodAddress = MethodAddress,
+                    MethodInfoAddress = v.address
+                }
             end
         end
         if (#FinalMethods == 0) then
