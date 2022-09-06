@@ -218,6 +218,22 @@ local GlobalMetadataApi = {
             return behavior
         end
         return nil
+    end,
+
+
+    ---@param name string
+    GetPointersToString = function(name)
+        local pointers = {}
+        gg.clearResults()
+        gg.setRanges(0)
+        gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
+                         gg.REGION_OTHER | gg.REGION_C_ALLOC)
+        gg.searchNumber("Q 00 '" .. name .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
+            Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
+        gg.searchPointer(0)
+        pointers = gg.getResults(gg.getResultsCount())
+        gg.clearResults()
+        return pointers
     end
 }
 

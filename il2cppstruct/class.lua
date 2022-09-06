@@ -169,21 +169,14 @@ local ClassApi = {
 
     ---@param self ClassApi
     FindClassWithName = function(self, ClassName)
-        gg.clearResults()
-        gg.setRanges(0)
-        gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
-                         gg.REGION_OTHER | gg.REGION_C_ALLOC)
-        gg.searchNumber("Q 00 '" .. ClassName .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
-            Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
-        gg.searchPointer(0)
-        local ClassNamePoint, ResultTable = gg.getResults(gg.getResultsCount()), {}
-        gg.clearResults()
+        local ClassNamePoint = Il2cpp.GlobalMetadataApi.GetPointersToString(ClassName)
+        local ResultTable = {}
         for k, v in ipairs(ClassNamePoint) do
             local MainClass = gg.getValues({{
                 address = v.address - self.NameOffset,
                 flags = v.flags
             }})[1]
-            if (self.IsClassInfo(v.address - self.NameOffset)) then
+            if (self.IsClassInfo(MainClass.address)) then
                 ResultTable[#ResultTable + 1] = {
                     ClassInfoAddress = Il2cpp.FixValue(MainClass.address),
                     ClassName = ClassName
@@ -197,15 +190,10 @@ local ClassApi = {
     end,
 
 
+    ---@param self ClassApi
     FindClassWithAddressInMemory = function(self, ClassAddress)
-        local assembly, ResultTable = Il2cpp.FixValue(gg.getValues({{
-            address = ClassAddress,
-            flags = Il2cpp.MainType
-        }})[1].value), {}
-        if (Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{
-            address = assembly,
-            flags = Il2cpp.MainType
-        }})[1].value)):find(".dll")) then
+        local ResultTable = {}
+        if self.IsClassInfo(ClassAddress) then
             ResultTable[#ResultTable + 1] = {
                 ClassInfoAddress = ClassAddress
             }

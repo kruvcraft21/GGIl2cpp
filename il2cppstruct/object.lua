@@ -22,7 +22,7 @@ local ObjectApi = {
                 gg.searchNumber(tostring(v.address | 0xB400000000000000), gg.TYPE_QWORD)
                 ---@type tablelib
                 local RefToObject = gg.getResults(gg.getResultsCount())
-                RefToObject:move(1, #RefToObject, #FixRefToObjects + 1, FixRefToObjects)
+                table.move(RefToObject, 1, #RefToObject, #FixRefToObjects + 1, FixRefToObjects)
                 gg.clearResults()
             end
             gg.loadResults(FixRefToObjects)

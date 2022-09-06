@@ -13,41 +13,16 @@ local MethodsApi = {
     ---@return MethodInfoRaw[]
     FindMethodWithName = function(self, MethodName)
         local FinalMethods = {}
-        gg.clearResults()
-        gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
-                         gg.REGION_OTHER)
-        gg.searchNumber("Q 00 '" .. MethodName .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, Il2cpp.globalMetadataStart,
-            Il2cpp.globalMetadataEnd)
-        if gg.getResultsCount() == 0 then
-            error('the "' .. MethodName .. '" function was not found')
-        end
-        gg.refineNumber("Q 00 '".. MethodName:sub(1, 1) .. "'")
-        gg.refineNumber("Q '".. MethodName:sub(1, 1) .. "'")
-        local r = gg.getResults(gg.getResultsCount())
-        gg.clearResults()
-        for j = 1, #r do
-            if gg.BUILD < 16126 then
-                gg.searchNumber(string.format("%8.8X", Il2cpp.FixValue(r[j].address)) .. 'h', self.MainType)
-            else
-                gg.loadResults({r[j]})
-                gg.searchPointer(0)
-            end
-            if gg.getResultsCount() <= 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
-                gg.searchNumber(tostring(tonumber(Il2cpp.FixValue(r[j].address), 16) | 0xB400000000000000),
-                    gg.TYPE_QWORD)
-            end
-            local MethodsInfo = gg.getResults(gg.getResultsCount())
-            gg.clearResults()
-            for k, v in ipairs(MethodsInfo) do
-                v.address = v.address - self.NameOffset
-                local FinalAddress = Il2cpp.FixValue(gg.getValues({v})[1].value)
-                if (FinalAddress > Il2cpp.il2cppStart and FinalAddress < Il2cpp.il2cppEnd) then
-                    FinalMethods[#FinalMethods + 1] = {
-                        MethodName = MethodName,
-                        MethodAddress = FinalAddress,
-                        MethodInfoAddress = v.address
-                    }
-                end
+        local MethodNamePointers = Il2cpp.GlobalMetadataApi.GetPointersToString(MethodName)
+        for i,v in ipairs(MethodNamePointers) do
+            v.address = v.address - self.NameOffset
+            local MethodAddress = Il2cpp.FixValue(gg.getValues({v})[1].value)
+            if MethodAddress > Il2cpp.il2cppStart and MethodAddress < Il2cpp.il2cppEnd then
+                FinalMethods[#FinalMethods + 1] = {
+                    MethodName = MethodName,
+                    MethodAddress = MethodAddress,
+                    MethodInfoAddress = v.address
+                }
             end
         end
         if (#FinalMethods == 0) then

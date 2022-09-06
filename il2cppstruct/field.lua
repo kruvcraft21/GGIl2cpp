@@ -66,15 +66,8 @@ local FieldApi = {
     ---@param fieldName string
     ---@return FieldInfo[]
     FindFieldWithName = function(self, fieldName)
-        gg.clearResults()
-        gg.setRanges(0)
-        gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
-                         gg.REGION_OTHER | gg.REGION_C_ALLOC)
-        gg.searchNumber("Q 00 '" .. fieldName .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
-            Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
-        gg.searchPointer(0)
-        local fieldNamePoint, ResultTable = gg.getResults(gg.getResultsCount()), {}
-        gg.clearResults()
+        local fieldNamePoint = Il2cpp.GlobalMetadataApi.GetPointersToString(fieldName)
+        local ResultTable = {}
         for k, v in ipairs(fieldNamePoint) do
             local classAddress = gg.getValues({{
                 address = v.address + self.ClassOffset,

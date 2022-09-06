@@ -149,7 +149,7 @@ Il2cpp = {
     --- Return table with information about fields.
     ---@generic TypeForSearch : number | string
     ---@param searchParams TypeForSearch[] @TypeForSearch = number | string
-    ---@return table<number, FieldApi[] | ErrorSearch>
+    ---@return table<number, FieldInfo[] | ErrorSearch>
     FindFields = function(searchParams)
         for i = 1, #searchParams do
             ---@type number | string
@@ -169,11 +169,11 @@ Il2cpp = {
     ---@param length? number
     ---@return string
     Utf8ToString = function(Address, length)
+        local chars, char = {}, {
+            address = Address,
+            flags = gg.TYPE_BYTE
+        }
         if not length then
-            local chars, char = {}, {
-                address = Address,
-                flags = gg.TYPE_BYTE
-            }
             repeat
                 _char = gg.getValues({char})[1].value
                 chars[#chars + 1] = string.char(_char & 0xFF)
@@ -181,10 +181,6 @@ Il2cpp = {
             until _char <= 0
             return table.concat(chars, "", 1, #chars - 1)
         else
-            local chars, char = {}, {
-                address = Address,
-                flags = gg.TYPE_BYTE
-            }
             for i = 1, length do
                 local _char = gg.getValues({char})[1].value
                 chars[i] = string.char(_char & 0xFF)
