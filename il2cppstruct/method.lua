@@ -25,9 +25,7 @@ local MethodsApi = {
                 }
             end
         end
-        if (#FinalMethods == 0) then
-            error('the "' .. MethodName .. '" function pointer was not found')
-        end
+        assert(#FinalMethods > 0, 'The "' .. MethodName ..'"" method is not initialized')
         return FinalMethods
     end,
 
@@ -37,9 +35,7 @@ local MethodsApi = {
     ---@return MethodInfoRaw[]
     FindMethodWithOffset = function(self, MethodOffset)
         local MethodsInfo = self.FindMethodWithAddressInMemory(Il2cpp.il2cppStart + MethodOffset, MethodOffset)
-        if (#MethodsInfo == 0) then
-            error('nothing was found for this offset 0x' .. string.format("%X", MethodOffset))
-        end
+        assert(#MethodsInfo > 0, 'nothing was found for this offset 0x' .. string.format("%X", MethodOffset))
         return MethodsInfo
     end,
 
@@ -71,9 +67,7 @@ local MethodsApi = {
                 Offset = MethodOffset
             }
         end
-        if (#RawMethodsInfo == 0 and MethodOffset == nil) then
-            error('nothing was found for this address 0x' .. string.format("%X", MethodAddress))
-        end
+        assert(#RawMethodsInfo > 0 or MethodOffset, 'nothing was found for this address 0x' .. string.format("%X", MethodAddress))
         return RawMethodsInfo
     end,
 

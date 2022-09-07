@@ -171,7 +171,7 @@ local ClassApi = {
     FindClassWithName = function(self, ClassName)
         local ClassNamePoint = Il2cpp.GlobalMetadataApi.GetPointersToString(ClassName)
         local ResultTable = {}
-        for k, v in ipairs(ClassNamePoint) do
+        for i, v in ipairs(ClassNamePoint) do
             local MainClass = gg.getValues({{
                 address = v.address - self.NameOffset,
                 flags = v.flags
@@ -183,9 +183,7 @@ local ClassApi = {
                 }
             end
         end
-        if (#ResultTable == 0) then
-            error('the "' .. ClassName .. '" class pointer was not found')
-        end
+        assert(#ResultTable > 0, 'The "' .. ClassName .. '" class is not initialized')
         return ResultTable
     end,
 
@@ -198,9 +196,7 @@ local ClassApi = {
                 ClassInfoAddress = ClassAddress
             }
         end
-        if (#ResultTable == 0) then
-            error('nothing was found for this address 0x' .. string.format("%X", ClassAddress))
-        end
+        assert(#ResultTable > 0, 'nothing was found for this address 0x' .. string.format("%X", ClassAddress))
         return ResultTable
     end,
 

@@ -78,71 +78,67 @@ local VersionEngine = {
                 version = version(p2, p3)
             end
         end
-        local api = Il2cppApi[version] 
-        if (api) then
-            Il2cpp.FieldApi.Offset = api.FieldApiOffset
-            Il2cpp.FieldApi.Type = api.FieldApiType
-            Il2cpp.FieldApi.ClassOffset = api.FieldApiClassOffset
+        local api = assert(Il2cppApi[version], 'Not support this il2cpp version')
+        Il2cpp.FieldApi.Offset = api.FieldApiOffset
+        Il2cpp.FieldApi.Type = api.FieldApiType
+        Il2cpp.FieldApi.ClassOffset = api.FieldApiClassOffset
 
-            Il2cpp.ClassApi.NameOffset = api.ClassApiNameOffset
-            Il2cpp.ClassApi.MethodsStep = api.ClassApiMethodsStep
-            Il2cpp.ClassApi.CountMethods = api.ClassApiCountMethods
-            Il2cpp.ClassApi.MethodsLink = api.ClassApiMethodsLink
-            Il2cpp.ClassApi.FieldsLink = api.ClassApiFieldsLink
-            Il2cpp.ClassApi.FieldsStep = api.ClassApiFieldsStep
-            Il2cpp.ClassApi.CountFields = api.ClassApiCountFields
-            Il2cpp.ClassApi.ParentOffset = api.ClassApiParentOffset
-            Il2cpp.ClassApi.NameSpaceOffset = api.ClassApiNameSpaceOffset
-            Il2cpp.ClassApi.StaticFieldDataOffset = api.ClassApiStaticFieldDataOffset
-            Il2cpp.ClassApi.EnumType = api.ClassApiEnumType
-            Il2cpp.ClassApi.EnumRsh = api.ClassApiEnumRsh
-            Il2cpp.ClassApi.TypeMetadataHandle = api.ClassApiTypeMetadataHandle
-            Il2cpp.ClassApi.InstanceSize = api.ClassApiInstanceSize
+        Il2cpp.ClassApi.NameOffset = api.ClassApiNameOffset
+        Il2cpp.ClassApi.MethodsStep = api.ClassApiMethodsStep
+        Il2cpp.ClassApi.CountMethods = api.ClassApiCountMethods
+        Il2cpp.ClassApi.MethodsLink = api.ClassApiMethodsLink
+        Il2cpp.ClassApi.FieldsLink = api.ClassApiFieldsLink
+        Il2cpp.ClassApi.FieldsStep = api.ClassApiFieldsStep
+        Il2cpp.ClassApi.CountFields = api.ClassApiCountFields
+        Il2cpp.ClassApi.ParentOffset = api.ClassApiParentOffset
+        Il2cpp.ClassApi.NameSpaceOffset = api.ClassApiNameSpaceOffset
+        Il2cpp.ClassApi.StaticFieldDataOffset = api.ClassApiStaticFieldDataOffset
+        Il2cpp.ClassApi.EnumType = api.ClassApiEnumType
+        Il2cpp.ClassApi.EnumRsh = api.ClassApiEnumRsh
+        Il2cpp.ClassApi.TypeMetadataHandle = api.ClassApiTypeMetadataHandle
+        Il2cpp.ClassApi.InstanceSize = api.ClassApiInstanceSize
 
-            Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
-            Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
-            Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
-            Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
+        Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
+        Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
+        Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
+        Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
 
-            Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
-            Il2cpp.GlobalMetadataApi.version = version
+        Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
+        Il2cpp.GlobalMetadataApi.version = version
 
-            local consts = gg.getValues({
-                { -- [1] 
-                    address = Il2cpp.globalMetadataHeader + api.typeDefinitionsOffset,
-                    flags = gg.TYPE_DWORD
-                },
-                { -- [2]
-                    address = Il2cpp.globalMetadataHeader + api.stringOffset,
-                    flags = gg.TYPE_DWORD,
-                },
-                { -- [3]
-                    address = Il2cpp.globalMetadataHeader + api.fieldDefaultValuesOffset,
-                    flags = gg.TYPE_DWORD,
-                },
-                { -- [4]
-                    address = Il2cpp.globalMetadataHeader + api.fieldDefaultValuesSize,
-                    flags = gg.TYPE_DWORD
-                },
-                { -- [5]
-                    address = Il2cpp.globalMetadataHeader + api.fieldAndParameterDefaultValueDataOffset,
-                    flags = gg.TYPE_DWORD
-                }
-            })
-            Il2cpp.GlobalMetadataApi.typeDefinitionsOffset = consts[1].value
-            Il2cpp.GlobalMetadataApi.stringOffset = consts[2].value
-            Il2cpp.GlobalMetadataApi.fieldDefaultValuesOffset = consts[3].value
-            Il2cpp.GlobalMetadataApi.fieldDefaultValuesSize = consts[4].value
-            Il2cpp.GlobalMetadataApi.fieldAndParameterDefaultValueDataOffset = consts[5].value
+        local consts = gg.getValues({
+            { -- [1] 
+                address = Il2cpp.globalMetadataHeader + api.typeDefinitionsOffset,
+                flags = gg.TYPE_DWORD
+            },
+            { -- [2]
+                address = Il2cpp.globalMetadataHeader + api.stringOffset,
+                flags = gg.TYPE_DWORD,
+            },
+            { -- [3]
+                address = Il2cpp.globalMetadataHeader + api.fieldDefaultValuesOffset,
+                flags = gg.TYPE_DWORD,
+            },
+            { -- [4]
+                address = Il2cpp.globalMetadataHeader + api.fieldDefaultValuesSize,
+                flags = gg.TYPE_DWORD
+            },
+            { -- [5]
+                address = Il2cpp.globalMetadataHeader + api.fieldAndParameterDefaultValueDataOffset,
+                flags = gg.TYPE_DWORD
+            }
+        })
+        Il2cpp.GlobalMetadataApi.typeDefinitionsOffset = consts[1].value
+        Il2cpp.GlobalMetadataApi.stringOffset = consts[2].value
+        Il2cpp.GlobalMetadataApi.fieldDefaultValuesOffset = consts[3].value
+        Il2cpp.GlobalMetadataApi.fieldDefaultValuesSize = consts[4].value
+        Il2cpp.GlobalMetadataApi.fieldAndParameterDefaultValueDataOffset = consts[5].value
 
-            Il2cpp.TypeApi.Type = api.TypeApiType
+        Il2cpp.TypeApi.Type = api.TypeApiType
 
-            Il2cpp.Il2CppTypeDefinitionApi.fieldStart = api.Il2CppTypeDefinitionApifieldStart
+        Il2cpp.Il2CppTypeDefinitionApi.fieldStart = api.Il2CppTypeDefinitionApifieldStart
 
-            Il2cpp.MetadataRegistrationApi.types = api.MetadataRegistrationApitypes
-        else
-            error('Not support this il2cpp version')
-        end 
+        Il2cpp.MetadataRegistrationApi.types = api.MetadataRegistrationApitypes
     end,
 }
 

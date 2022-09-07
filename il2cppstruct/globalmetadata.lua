@@ -35,7 +35,7 @@ local GlobalMetadataApi = {
         end,
         [9] = function(blob)
             local self = Il2cpp.GlobalMetadataApi
-            return self.version < 29 and self.ReadNumberConst(blob, gg.TYPE_DWORD) or self.ReadCompressedUInt32(blob)
+            return self.version < 29 and Il2cpp.FixValue(self.ReadNumberConst(blob, gg.TYPE_DWORD)) or self.ReadCompressedUInt32(blob)
         end,
         [10] = function(blob)
             return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_QWORD)
@@ -232,6 +232,7 @@ local GlobalMetadataApi = {
             Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
         gg.searchPointer(0)
         pointers = gg.getResults(gg.getResultsCount())
+        assert(type(pointers) == 'table' and #pointers > 0, 'this "' .. name .. '" is not in the global-metadata')
         gg.clearResults()
         return pointers
     end

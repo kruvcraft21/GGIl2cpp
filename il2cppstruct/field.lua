@@ -83,9 +83,7 @@ local FieldApi = {
                 end
             end
         end
-        if (#ResultTable == 0) then
-            error('the "' .. fieldName .. '" field pointer was not found')
-        end
+        assert(#ResultTable > 0, 'The "' .. fieldName .. '" field is not initialized')
         return ResultTable
     end,
 
@@ -102,9 +100,7 @@ local FieldApi = {
         for i, v in ipairs(Il2cppClass) do
             ResultTable[#ResultTable + 1] = v:GetFieldWithOffset(fieldOffset)
         end
-        if (#ResultTable == 0) then
-            error('nothing was found for this address 0x' .. string.format("%X", fieldAddress))
-        end
+        assert(#ResultTable > 0, 'nothing was found for this address 0x' .. string.format("%X", fieldAddress))
         return ResultTable
     end,
 
