@@ -1,4 +1,4 @@
-local AndroidInfo = require("until.androidinfo")
+local AndroidInfo = require("utils.androidinfo")
 
 ---@class Searcher
 local Searcher = {

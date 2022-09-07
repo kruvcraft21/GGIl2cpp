@@ -1,10 +1,7 @@
-local Il2cppMemory = require("until.il2cppmemory")
-
-local VersionEngine = require("until.version")
-
-local AndroidInfo = require("until.androidinfo")
-
-local Sercher = require("until.universalsearcher")
+local Il2cppMemory = require("utils.il2cppmemory")
+local VersionEngine = require("utils.version")
+local AndroidInfo = require("utils.androidinfo")
+local Searcher = require("utils.universalsearcher")
 
 function GetTypeClassName(index)
     return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
@@ -253,13 +250,13 @@ Il2cpp = setmetatable(Il2cpp, {
         if libilcpp then
             self.il2cppStart, self.il2cppEnd = libilcpp.start, libilcpp['end']
         else
-            self.il2cppStart, self.il2cppEnd = Sercher.FindIl2cpp()
+            self.il2cppStart, self.il2cppEnd = Searcher.FindIl2cpp()
         end
 
         if globalMetadata then
             self.globalMetadataStart, self.globalMetadataEnd = globalMetadata.start, globalMetadata['end']
         else
-            self.globalMetadataStart, self.globalMetadataEnd = Sercher:FindGlobalMetaData()
+            self.globalMetadataStart, self.globalMetadataEnd = Searcher:FindGlobalMetaData()
         end
 
         self.globalMetadataHeader = globalMetadataHeader or self.globalMetadataStart

@@ -1,4 +1,4 @@
-local AndroidInfo = require("until.androidinfo")
+local AndroidInfo = require("utils.androidinfo")
 
 ---@type table<number, Il2cppApi>
 Il2cppApi = {

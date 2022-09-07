@@ -193,7 +193,7 @@ local GlobalMetadataApi = {
     
     ---@param self GlobalMetadataApi
     ---@param index number
-    ---@return any | nil
+    ---@return number | string | nil
     GetDefaultFieldValue = function(self, index)
         local Il2CppFieldDefaultValue = self:GetIl2CppFieldDefaultValue(tostring(index))
         if #Il2CppFieldDefaultValue > 0 then

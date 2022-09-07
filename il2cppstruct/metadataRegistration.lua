@@ -1,4 +1,4 @@
-local Searcher = require("until.universalsearcher")
+local Searcher = require("utils.universalsearcher")
 
 ---@class MetadataRegistrationApi
 ---@field metadataRegistration number

@@ -1,4 +1,4 @@
-AndroidInfo = require("until.androidinfo")
+AndroidInfo = require("utils.androidinfo")
 
 ---@class MethodsApi
 ---@field ClassOffset number

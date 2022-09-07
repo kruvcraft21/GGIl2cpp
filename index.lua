@@ -1,4 +1,4 @@
-require("until.il2cppconst")
+require("utils.il2cppconst")
 require("il2cpp")
 
 ---@class ClassInfoRaw
