@@ -265,9 +265,7 @@ Il2cpp = setmetatable(Il2cpp, {
 
         VersionEngine:ChooseVersion(il2cppVersion)
 
-        Il2cppMemory.Methods = {}
-        Il2cppMemory.Classes = {}
-        Il2cppMemory.Fields = {}
+        Il2cppMemory:ClearMemorize()
     end
 })
 

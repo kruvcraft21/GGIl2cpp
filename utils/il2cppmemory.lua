@@ -3,6 +3,7 @@
 ---@field Methods table<number | string, MethodInfo[] | ErrorSearch>
 ---@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
 ---@field Fields table<number | string, FieldInfo[] | ErrorSearch>
+---@field DefaultValues table<number, string | number>
 ---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
 ---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
 ---@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
@@ -14,6 +15,23 @@ local Il2cppMemory = {
     Methods = {},
     Classes = {},
     Fields = {},
+    DefaultValues = {},
+
+
+    ---@param self Il2cppMemory
+    ---@param fieldIndex number
+    ---@return string | number | nil
+    GetDefaultValue = function(self, fieldIndex)
+        return self.DefaultValues[fieldIndex]
+    end,
+
+
+    ---@param self Il2cppMemory
+    ---@param fieldIndex number
+    ---@param defaultValue number | string | nil
+    SetDefaultValue = function(self, fieldIndex, defaultValue)
+        self.DefaultValues[fieldIndex] = defaultValue or "nil"
+    end,
 
 
     ---@param self Il2cppMemory
@@ -66,6 +84,16 @@ local Il2cppMemory = {
             },
             SearchResult = searchResult
         }
+    end,
+
+
+    ---@param self Il2cppMemory
+    ---@return void
+    ClearMemorize = function(self)
+        self.Methods = {}
+        self.Classes = {}
+        self.Fields = {}
+        self.DefaultValues = {}
     end
 }
 

@@ -81,7 +81,7 @@ local Searcher = {
                     local difference = GlobalMetadataPointers[i].address - GlobalMetadataPointers[i - 1].address
                     if (difference == Il2cpp.pointSize) then
                         s_GlobalMetadata = Il2cpp.FixValue(gg.getValues({{
-                            address = GlobalMetadataPointers[i].address - 0x10,
+                            address = GlobalMetadataPointers[i].address - (AndroidInfo.platform and 0x10 or 0x8),
                             flags = Il2cpp.MainType
                         }})[1].value)
                     end
