@@ -41,7 +41,7 @@ local __bundle_require, __bundle_loaded, __bundle_register, __bundle_modules = (
 	return require, loaded, register, modules
 end)(nil)
 __bundle_register("GGIl2cpp", function(require, _LOADED, __bundle_register, __bundle_modules)
-require("until.il2cppconst")
+require("utils.il2cppconst")
 require("il2cpp")
 
 ---@class ClassInfoRaw
@@ -167,13 +167,10 @@ Protect = {
 return Il2cpp
 end)
 __bundle_register("il2cpp", function(require, _LOADED, __bundle_register, __bundle_modules)
-local Il2cppMemory = require("until.il2cppmemory")
-
-local VersionEngine = require("until.version")
-
-local AndroidInfo = require("until.androidinfo")
-
-local Sercher = require("until.universalsearcher")
+local Il2cppMemory = require("utils.il2cppmemory")
+local VersionEngine = require("utils.version")
+local AndroidInfo = require("utils.androidinfo")
+local Searcher = require("utils.universalsearcher")
 
 function GetTypeClassName(index)
     return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
@@ -422,13 +419,13 @@ Il2cpp = setmetatable(Il2cpp, {
         if libilcpp then
             self.il2cppStart, self.il2cppEnd = libilcpp.start, libilcpp['end']
         else
-            self.il2cppStart, self.il2cppEnd = Sercher.FindIl2cpp()
+            self.il2cppStart, self.il2cppEnd = Searcher.FindIl2cpp()
         end
 
         if globalMetadata then
             self.globalMetadataStart, self.globalMetadataEnd = globalMetadata.start, globalMetadata['end']
         else
-            self.globalMetadataStart, self.globalMetadataEnd = Sercher:FindGlobalMetaData()
+            self.globalMetadataStart, self.globalMetadataEnd = Searcher:FindGlobalMetaData()
         end
 
         self.globalMetadataHeader = globalMetadataHeader or self.globalMetadataStart
@@ -437,15 +434,15 @@ Il2cpp = setmetatable(Il2cpp, {
 
         VersionEngine:ChooseVersion(il2cppVersion)
 
-        Il2cppMemory.Methods = {}
-        Il2cppMemory.Classes = {}
-        Il2cppMemory.Fields = {}
+        Il2cppMemory:ClearMemorize()
     end
 })
 
 return Il2cpp
 end)
 __bundle_register("il2cppstruct.api.fieldinfo", function(require, _LOADED, __bundle_register, __bundle_modules)
+local Il2cppMemory = require("utils.il2cppmemory")
+
 ---@type FieldInfo
 local FieldInfoApi = {
 
@@ -455,13 +452,123 @@ local FieldInfoApi = {
     GetConstValue = function(self)
         if self.IsConst then
             local fieldIndex = getmetatable(self).fieldIndex
-            return Il2cpp.GlobalMetadataApi:GetDefaultFieldValue(fieldIndex)
+            local defaultValue = Il2cppMemory:GetDefaultValue(fieldIndex)
+            if not defaultValue then
+                defaultValue = Il2cpp.GlobalMetadataApi:GetDefaultFieldValue(fieldIndex)
+                Il2cppMemory:SetDefaultValue(fieldIndex, defaultValue)
+            elseif defaultValue == "nil" then
+                return nil
+            end
+            return defaultValue
         end
         return nil
     end
 }
 
 return FieldInfoApi
+end)
+__bundle_register("utils.il2cppmemory", function(require, _LOADED, __bundle_register, __bundle_modules)
+-- Memorizing Il2cpp Search Result
+---@class Il2cppMemory
+---@field Methods table<number | string, MethodInfo[] | ErrorSearch>
+---@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
+---@field Fields table<number | string, FieldInfo[] | ErrorSearch>
+---@field DefaultValues table<number, string | number>
+---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
+---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
+---@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
+---@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : ClassConfig) : ClassInfo[] | nil | ErrorSearch
+---@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
+---@field GetInformaionOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
+---@field SetInformaionOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
+local Il2cppMemory = {
+    Methods = {},
+    Classes = {},
+    Fields = {},
+    DefaultValues = {},
+
+
+    ---@param self Il2cppMemory
+    ---@param fieldIndex number
+    ---@return string | number | nil
+    GetDefaultValue = function(self, fieldIndex)
+        return self.DefaultValues[fieldIndex]
+    end,
+
+
+    ---@param self Il2cppMemory
+    ---@param fieldIndex number
+    ---@param defaultValue number | string | nil
+    SetDefaultValue = function(self, fieldIndex, defaultValue)
+        self.DefaultValues[fieldIndex] = defaultValue or "nil"
+    end,
+
+
+    ---@param self Il2cppMemory
+    ---@param searchParam number | string
+    ---@return FieldInfo[] | nil | ErrorSearch
+    GetInformaionOfField = function(self, searchParam)
+        return self.Fields[searchParam]
+    end,
+
+
+    ---@param self Il2cppMemory
+    ---@param searchParam number | string
+    ---@param searchResult FieldInfo[] | ErrorSearch
+    SetInformaionOfField = function(self, searchParam, searchResult)
+        self.Fields[searchParam] = searchResult
+    end,
+
+
+    GetInformaionOfMethod = function(self, searchParam)
+        return self.Methods[searchParam]
+    end,
+
+
+    SetInformaionOfMethod = function(self, searchParam, searchResult)
+        self.Methods[searchParam] = searchResult
+    end,
+
+
+    GetInfoOfClass = function(self, searchParam)
+        return self.Classes[searchParam]
+    end,
+
+
+    GetInformationOfClass = function(self, searchParam)
+        local ClassMemory = self:GetInfoOfClass(searchParam.Class)
+        if not (ClassMemory and
+            (ClassMemory.Config.FieldsDump == searchParam.FieldsDump and ClassMemory.Config.MethodsDump ==
+                searchParam.MethodsDump)) then
+            return nil
+        end
+        return ClassMemory.SearchResult
+    end,
+
+
+    SetInformaionOfClass = function(self, searchParam, searchResult)
+        self.Classes[searchParam.Class] = {
+            Config = {
+                FieldsDump = searchParam.FieldsDump and true or false,
+                MethodsDump = searchParam.MethodsDump and true or false
+            },
+            SearchResult = searchResult
+        }
+    end,
+
+
+    ---@param self Il2cppMemory
+    ---@return void
+    ClearMemorize = function(self)
+        self.Methods = {}
+        self.Classes = {}
+        self.Fields = {}
+        self.DefaultValues = {}
+    end
+}
+
+return Il2cppMemory
+
 end)
 __bundle_register("il2cppstruct.api.classinfo", function(require, _LOADED, __bundle_register, __bundle_modules)
 local ClassInfoApi = {
@@ -599,7 +706,7 @@ local ClassInfoApi = {
 return ClassInfoApi
 end)
 __bundle_register("il2cppstruct.object", function(require, _LOADED, __bundle_register, __bundle_modules)
-AndroidInfo = require("until.androidinfo")
+AndroidInfo = require("utils.androidinfo")
 
 ---@class ObjectApi
 local ObjectApi = {
@@ -706,7 +813,7 @@ local ObjectApi = {
 
 return ObjectApi
 end)
-__bundle_register("until.androidinfo", function(require, _LOADED, __bundle_register, __bundle_modules)
+__bundle_register("utils.androidinfo", function(require, _LOADED, __bundle_register, __bundle_modules)
 local AndroidInfo = {
     platform = gg.getTargetInfo().x64,
     sdk = gg.getTargetInfo().targetSdkVersion
@@ -888,7 +995,7 @@ local ClassApi = {
     FindClassWithName = function(self, ClassName)
         local ClassNamePoint = Il2cpp.GlobalMetadataApi.GetPointersToString(ClassName)
         local ResultTable = {}
-        for k, v in ipairs(ClassNamePoint) do
+        for i, v in ipairs(ClassNamePoint) do
             local MainClass = gg.getValues({{
                 address = v.address - self.NameOffset,
                 flags = v.flags
@@ -900,9 +1007,7 @@ local ClassApi = {
                 }
             end
         end
-        if (#ResultTable == 0) then
-            error('the "' .. ClassName .. '" class pointer was not found')
-        end
+        assert(#ResultTable > 0, 'The "' .. ClassName .. '" class is not initialized')
         return ResultTable
     end,
 
@@ -915,9 +1020,7 @@ local ClassApi = {
                 ClassInfoAddress = ClassAddress
             }
         end
-        if (#ResultTable == 0) then
-            error('nothing was found for this address 0x' .. string.format("%X", ClassAddress))
-        end
+        assert(#ResultTable > 0, 'nothing was found for this address 0x' .. string.format("%X", ClassAddress))
         return ResultTable
     end,
 
@@ -1047,9 +1150,7 @@ local FieldApi = {
                 end
             end
         end
-        if (#ResultTable == 0) then
-            error('the "' .. fieldName .. '" field pointer was not found')
-        end
+        assert(#ResultTable > 0, 'The "' .. fieldName .. '" field is not initialized')
         return ResultTable
     end,
 
@@ -1066,9 +1167,7 @@ local FieldApi = {
         for i, v in ipairs(Il2cppClass) do
             ResultTable[#ResultTable + 1] = v:GetFieldWithOffset(fieldOffset)
         end
-        if (#ResultTable == 0) then
-            error('nothing was found for this address 0x' .. string.format("%X", fieldAddress))
-        end
+        assert(#ResultTable > 0, 'nothing was found for this address 0x' .. string.format("%X", fieldAddress))
         return ResultTable
     end,
 
@@ -1142,7 +1241,7 @@ local GlobalMetadataApi = {
         end,
         [9] = function(blob)
             local self = Il2cpp.GlobalMetadataApi
-            return self.version < 29 and self.ReadNumberConst(blob, gg.TYPE_DWORD) or self.ReadCompressedUInt32(blob)
+            return self.version < 29 and Il2cpp.FixValue(self.ReadNumberConst(blob, gg.TYPE_DWORD)) or self.ReadCompressedUInt32(blob)
         end,
         [10] = function(blob)
             return Il2cpp.GlobalMetadataApi.ReadNumberConst(blob, gg.TYPE_QWORD)
@@ -1300,7 +1399,7 @@ local GlobalMetadataApi = {
     
     ---@param self GlobalMetadataApi
     ---@param index number
-    ---@return any | nil
+    ---@return number | string | nil
     GetDefaultFieldValue = function(self, index)
         local Il2CppFieldDefaultValue = self:GetIl2CppFieldDefaultValue(tostring(index))
         if #Il2CppFieldDefaultValue > 0 then
@@ -1339,6 +1438,7 @@ local GlobalMetadataApi = {
             Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
         gg.searchPointer(0)
         pointers = gg.getResults(gg.getResultsCount())
+        assert(type(pointers) == 'table' and #pointers > 0, 'this "' .. name .. '" is not in the global-metadata')
         gg.clearResults()
         return pointers
     end
@@ -1347,7 +1447,7 @@ local GlobalMetadataApi = {
 return GlobalMetadataApi
 end)
 __bundle_register("il2cppstruct.method", function(require, _LOADED, __bundle_register, __bundle_modules)
-AndroidInfo = require("until.androidinfo")
+AndroidInfo = require("utils.androidinfo")
 
 ---@class MethodsApi
 ---@field ClassOffset number
@@ -1374,9 +1474,7 @@ local MethodsApi = {
                 }
             end
         end
-        if (#FinalMethods == 0) then
-            error('the "' .. MethodName .. '" function pointer was not found')
-        end
+        assert(#FinalMethods > 0, 'The "' .. MethodName ..'"" method is not initialized')
         return FinalMethods
     end,
 
@@ -1386,9 +1484,7 @@ local MethodsApi = {
     ---@return MethodInfoRaw[]
     FindMethodWithOffset = function(self, MethodOffset)
         local MethodsInfo = self.FindMethodWithAddressInMemory(Il2cpp.il2cppStart + MethodOffset, MethodOffset)
-        if (#MethodsInfo == 0) then
-            error('nothing was found for this offset 0x' .. string.format("%X", MethodOffset))
-        end
+        assert(#MethodsInfo > 0, 'nothing was found for this offset 0x' .. string.format("%X", MethodOffset))
         return MethodsInfo
     end,
 
@@ -1420,9 +1516,7 @@ local MethodsApi = {
                 Offset = MethodOffset
             }
         end
-        if (#RawMethodsInfo == 0 and MethodOffset == nil) then
-            error('nothing was found for this address 0x' .. string.format("%X", MethodAddress))
-        end
+        assert(#RawMethodsInfo > 0 or MethodOffset, 'nothing was found for this address 0x' .. string.format("%X", MethodAddress))
         return RawMethodsInfo
     end,
 
@@ -1617,7 +1711,7 @@ local TypeApi = {
 return TypeApi
 end)
 __bundle_register("il2cppstruct.metadataRegistration", function(require, _LOADED, __bundle_register, __bundle_modules)
-local Searcher = require("until.universalsearcher")
+local Searcher = require("utils.universalsearcher")
 
 ---@class MetadataRegistrationApi
 ---@field metadataRegistration number
@@ -1645,8 +1739,8 @@ local MetadataRegistrationApi = {
 
 return MetadataRegistrationApi
 end)
-__bundle_register("until.universalsearcher", function(require, _LOADED, __bundle_register, __bundle_modules)
-local AndroidInfo = require("until.androidinfo")
+__bundle_register("utils.universalsearcher", function(require, _LOADED, __bundle_register, __bundle_modules)
+local AndroidInfo = require("utils.androidinfo")
 
 ---@class Searcher
 local Searcher = {
@@ -1729,7 +1823,7 @@ local Searcher = {
                     local difference = GlobalMetadataPointers[i].address - GlobalMetadataPointers[i - 1].address
                     if (difference == Il2cpp.pointSize) then
                         s_GlobalMetadata = Il2cpp.FixValue(gg.getValues({{
-                            address = GlobalMetadataPointers[i].address - 0x10,
+                            address = GlobalMetadataPointers[i].address - (AndroidInfo.platform and 0x10 or 0x8),
                             flags = Il2cpp.MainType
                         }})[1].value)
                     end
@@ -1744,7 +1838,7 @@ local Searcher = {
 return Searcher
 
 end)
-__bundle_register("until.version", function(require, _LOADED, __bundle_register, __bundle_modules)
+__bundle_register("utils.version", function(require, _LOADED, __bundle_register, __bundle_modules)
 ---@class VersionEngine
 local VersionEngine = {
     Year = {
@@ -1825,153 +1919,74 @@ local VersionEngine = {
                 version = version(p2, p3)
             end
         end
-        local api = Il2cppApi[version] 
-        if (api) then
-            Il2cpp.FieldApi.Offset = api.FieldApiOffset
-            Il2cpp.FieldApi.Type = api.FieldApiType
-            Il2cpp.FieldApi.ClassOffset = api.FieldApiClassOffset
+        local api = assert(Il2cppApi[version], 'Not support this il2cpp version')
+        Il2cpp.FieldApi.Offset = api.FieldApiOffset
+        Il2cpp.FieldApi.Type = api.FieldApiType
+        Il2cpp.FieldApi.ClassOffset = api.FieldApiClassOffset
 
-            Il2cpp.ClassApi.NameOffset = api.ClassApiNameOffset
-            Il2cpp.ClassApi.MethodsStep = api.ClassApiMethodsStep
-            Il2cpp.ClassApi.CountMethods = api.ClassApiCountMethods
-            Il2cpp.ClassApi.MethodsLink = api.ClassApiMethodsLink
-            Il2cpp.ClassApi.FieldsLink = api.ClassApiFieldsLink
-            Il2cpp.ClassApi.FieldsStep = api.ClassApiFieldsStep
-            Il2cpp.ClassApi.CountFields = api.ClassApiCountFields
-            Il2cpp.ClassApi.ParentOffset = api.ClassApiParentOffset
-            Il2cpp.ClassApi.NameSpaceOffset = api.ClassApiNameSpaceOffset
-            Il2cpp.ClassApi.StaticFieldDataOffset = api.ClassApiStaticFieldDataOffset
-            Il2cpp.ClassApi.EnumType = api.ClassApiEnumType
-            Il2cpp.ClassApi.EnumRsh = api.ClassApiEnumRsh
-            Il2cpp.ClassApi.TypeMetadataHandle = api.ClassApiTypeMetadataHandle
-            Il2cpp.ClassApi.InstanceSize = api.ClassApiInstanceSize
+        Il2cpp.ClassApi.NameOffset = api.ClassApiNameOffset
+        Il2cpp.ClassApi.MethodsStep = api.ClassApiMethodsStep
+        Il2cpp.ClassApi.CountMethods = api.ClassApiCountMethods
+        Il2cpp.ClassApi.MethodsLink = api.ClassApiMethodsLink
+        Il2cpp.ClassApi.FieldsLink = api.ClassApiFieldsLink
+        Il2cpp.ClassApi.FieldsStep = api.ClassApiFieldsStep
+        Il2cpp.ClassApi.CountFields = api.ClassApiCountFields
+        Il2cpp.ClassApi.ParentOffset = api.ClassApiParentOffset
+        Il2cpp.ClassApi.NameSpaceOffset = api.ClassApiNameSpaceOffset
+        Il2cpp.ClassApi.StaticFieldDataOffset = api.ClassApiStaticFieldDataOffset
+        Il2cpp.ClassApi.EnumType = api.ClassApiEnumType
+        Il2cpp.ClassApi.EnumRsh = api.ClassApiEnumRsh
+        Il2cpp.ClassApi.TypeMetadataHandle = api.ClassApiTypeMetadataHandle
+        Il2cpp.ClassApi.InstanceSize = api.ClassApiInstanceSize
 
-            Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
-            Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
-            Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
-            Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
+        Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
+        Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
+        Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
+        Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
 
-            Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
-            Il2cpp.GlobalMetadataApi.version = version
+        Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
+        Il2cpp.GlobalMetadataApi.version = version
 
-            local consts = gg.getValues({
-                { -- [1] 
-                    address = Il2cpp.globalMetadataHeader + api.typeDefinitionsOffset,
-                    flags = gg.TYPE_DWORD
-                },
-                { -- [2]
-                    address = Il2cpp.globalMetadataHeader + api.stringOffset,
-                    flags = gg.TYPE_DWORD,
-                },
-                { -- [3]
-                    address = Il2cpp.globalMetadataHeader + api.fieldDefaultValuesOffset,
-                    flags = gg.TYPE_DWORD,
-                },
-                { -- [4]
-                    address = Il2cpp.globalMetadataHeader + api.fieldDefaultValuesSize,
-                    flags = gg.TYPE_DWORD
-                },
-                { -- [5]
-                    address = Il2cpp.globalMetadataHeader + api.fieldAndParameterDefaultValueDataOffset,
-                    flags = gg.TYPE_DWORD
-                }
-            })
-            Il2cpp.GlobalMetadataApi.typeDefinitionsOffset = consts[1].value
-            Il2cpp.GlobalMetadataApi.stringOffset = consts[2].value
-            Il2cpp.GlobalMetadataApi.fieldDefaultValuesOffset = consts[3].value
-            Il2cpp.GlobalMetadataApi.fieldDefaultValuesSize = consts[4].value
-            Il2cpp.GlobalMetadataApi.fieldAndParameterDefaultValueDataOffset = consts[5].value
+        local consts = gg.getValues({
+            { -- [1] 
+                address = Il2cpp.globalMetadataHeader + api.typeDefinitionsOffset,
+                flags = gg.TYPE_DWORD
+            },
+            { -- [2]
+                address = Il2cpp.globalMetadataHeader + api.stringOffset,
+                flags = gg.TYPE_DWORD,
+            },
+            { -- [3]
+                address = Il2cpp.globalMetadataHeader + api.fieldDefaultValuesOffset,
+                flags = gg.TYPE_DWORD,
+            },
+            { -- [4]
+                address = Il2cpp.globalMetadataHeader + api.fieldDefaultValuesSize,
+                flags = gg.TYPE_DWORD
+            },
+            { -- [5]
+                address = Il2cpp.globalMetadataHeader + api.fieldAndParameterDefaultValueDataOffset,
+                flags = gg.TYPE_DWORD
+            }
+        })
+        Il2cpp.GlobalMetadataApi.typeDefinitionsOffset = consts[1].value
+        Il2cpp.GlobalMetadataApi.stringOffset = consts[2].value
+        Il2cpp.GlobalMetadataApi.fieldDefaultValuesOffset = consts[3].value
+        Il2cpp.GlobalMetadataApi.fieldDefaultValuesSize = consts[4].value
+        Il2cpp.GlobalMetadataApi.fieldAndParameterDefaultValueDataOffset = consts[5].value
 
-            Il2cpp.TypeApi.Type = api.TypeApiType
+        Il2cpp.TypeApi.Type = api.TypeApiType
 
-            Il2cpp.Il2CppTypeDefinitionApi.fieldStart = api.Il2CppTypeDefinitionApifieldStart
+        Il2cpp.Il2CppTypeDefinitionApi.fieldStart = api.Il2CppTypeDefinitionApifieldStart
 
-            Il2cpp.MetadataRegistrationApi.types = api.MetadataRegistrationApitypes
-        else
-            error('Not support this il2cpp version')
-        end 
+        Il2cpp.MetadataRegistrationApi.types = api.MetadataRegistrationApitypes
     end,
 }
 
 return VersionEngine
 end)
-__bundle_register("until.il2cppmemory", function(require, _LOADED, __bundle_register, __bundle_modules)
--- Memorizing Il2cpp Search Result
----@class Il2cppMemory
----@field Methods table<number | string, MethodInfo[] | ErrorSearch>
----@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
----@field Fields table<number | string, FieldInfo[] | ErrorSearch>
----@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
----@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
----@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
----@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : ClassConfig) : ClassInfo[] | nil | ErrorSearch
----@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
----@field GetInformaionOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
----@field SetInformaionOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
-local Il2cppMemory = {
-    Methods = {},
-    Classes = {},
-    Fields = {},
-
-
-    ---@param self Il2cppMemory
-    ---@param searchParam number | string
-    ---@return FieldInfo[] | nil | ErrorSearch
-    GetInformaionOfField = function(self, searchParam)
-        return self.Fields[searchParam]
-    end,
-
-
-    ---@param self Il2cppMemory
-    ---@param searchParam number | string
-    ---@param searchResult FieldInfo[] | ErrorSearch
-    SetInformaionOfField = function(self, searchParam, searchResult)
-        self.Fields[searchParam] = searchResult
-    end,
-
-
-    GetInformaionOfMethod = function(self, searchParam)
-        return self.Methods[searchParam]
-    end,
-
-
-    SetInformaionOfMethod = function(self, searchParam, searchResult)
-        self.Methods[searchParam] = searchResult
-    end,
-
-
-    GetInfoOfClass = function(self, searchParam)
-        return self.Classes[searchParam]
-    end,
-
-
-    GetInformationOfClass = function(self, searchParam)
-        local ClassMemory = self:GetInfoOfClass(searchParam.Class)
-        if not (ClassMemory and
-            (ClassMemory.Config.FieldsDump == searchParam.FieldsDump and ClassMemory.Config.MethodsDump ==
-                searchParam.MethodsDump)) then
-            return nil
-        end
-        return ClassMemory.SearchResult
-    end,
-
-
-    SetInformaionOfClass = function(self, searchParam, searchResult)
-        self.Classes[searchParam.Class] = {
-            Config = {
-                FieldsDump = searchParam.FieldsDump and true or false,
-                MethodsDump = searchParam.MethodsDump and true or false
-            },
-            SearchResult = searchResult
-        }
-    end
-}
-
-return Il2cppMemory
-
-end)
-__bundle_register("until.il2cppconst", function(require, _LOADED, __bundle_register, __bundle_modules)
-local AndroidInfo = require("until.androidinfo")
+__bundle_register("utils.il2cppconst", function(require, _LOADED, __bundle_register, __bundle_modules)
+local AndroidInfo = require("utils.androidinfo")
 
 ---@type table<number, Il2cppApi>
 Il2cppApi = {
