@@ -110,15 +110,4 @@ require("il2cpp")
 ---@class Il2CppTypeDefinitionApi
 ---@field fieldStart number
 
-
-
-Protect = {
-    ErrorHandler = function(err)
-        return {Error = err}
-    end,
-    Call = function(self, fun, ...) 
-        return ({xpcall(fun, self.ErrorHandler, ...)})[2]
-    end
-}
-
 return Il2cpp

@@ -1,4 +1,5 @@
-AndroidInfo = require("utils.androidinfo")
+local AndroidInfo = require("utils.androidinfo")
+local Protect = require("utils.protect")
 
 ---@class MethodsApi
 ---@field ClassOffset number

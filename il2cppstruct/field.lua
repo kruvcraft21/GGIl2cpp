@@ -1,3 +1,5 @@
+local Protect = require("utils.protect")
+
 ---@class FieldApi
 ---@field Offset number
 ---@field Type number

@@ -23,8 +23,12 @@ local TypeApi = {
         [24] = "IntPtr",
         [25] = "UIntPtr",
         [28] = "object",
-        [17] = GetTypeClassName,
-        [18] = GetTypeClassName,
+        [17] = function(index)
+            return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
+        end,
+        [18] = function(index)
+            return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
+        end,
         [29] = function(index)
             local typeMassiv = gg.getValues({
                 {

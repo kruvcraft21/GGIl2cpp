@@ -1,3 +1,5 @@
+local Protect = require("utils.protect")
+
 ---@class ClassApi
 ---@field NameOffset number
 ---@field MethodsStep number

@@ -3,31 +3,6 @@ local VersionEngine = require("utils.version")
 local AndroidInfo = require("utils.androidinfo")
 local Searcher = require("utils.universalsearcher")
 
-function GetTypeClassName(index)
-    return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
-end
-
-function getAlfUtf16()
-    local Utf16 = {}
-    for s in string.gmatch('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', "..") do
-        local char = gg.bytes(s,'UTF-16LE')
-        Utf16[char[1] + (char[2] * 256)] = s
-    end
-    for s in string.gmatch("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_/0123456789-'", ".") do
-        local char = gg.bytes(s,'UTF-16LE')
-        Utf16[char[1] + (char[2] * 256)] = s
-    end
-    return Utf16
-end
-
-function getValidStartAddress(Address)
-    local lenAddress = #string.format("%X", Address)
-    local checkTable = {['C'] = true, ['4'] = true, ['8']= true, ['0'] = true}
-    while not checkTable[string.format("%X", Address):sub(lenAddress)] do
-        Address = Address - 1
-    end
-    return Address
-end
 
 
 ---@class Il2cpp
@@ -188,32 +163,6 @@ Il2cpp = {
     end,
 
 
-    Utf16ToString = function(Address)
-        local bytes, strAddress = {}, Il2cpp.FixValue(Address) + (AndroidInfo.platform and 0x10 or 0x8)
-        local num = gg.getValues({{
-            address = strAddress,
-            flags = gg.TYPE_DWORD
-        }})[1].value
-        if num > 0 and num < 200 then
-            for i = 1, num + 1 do
-                bytes[#bytes + 1] = {
-                    address = strAddress + (i << 1),
-                    flags = gg.TYPE_WORD
-                }
-            end
-        end
-        return #bytes > 0 and tostring(setmetatable(gg.getValues(bytes), {
-            __tostring = function(self)
-                local Utf16 = getAlfUtf16()
-                for k, v in ipairs(self) do
-                    self[k] = v.value == 32 and " " or (Utf16[v.value] or "")
-                end
-                return table.concat(self)
-            end
-        })) or ""
-    end,
-
-
     ---@param bytes string
     ChangeBytesOrder = function(bytes)
         local newBytes, index, lenBytes = {}, 0, #bytes / 2
@@ -227,6 +176,16 @@ Il2cpp = {
 
     FixValue = function(val)
         return AndroidInfo.platform and val & 0x00FFFFFFFFFFFFFF or val & 0xFFFFFFFF
+    end,
+
+
+    GetValidAddress = function(Address)
+        local lenAddress = #string.format("%X", Address)
+        local checkTable = {['C'] = true, ['4'] = true, ['8']= true, ['0'] = true}
+        while not checkTable[string.format("%X", Address):sub(lenAddress)] do
+            Address = Address - 1
+        end
+        return Address
     end,
 
 

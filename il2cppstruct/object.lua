@@ -1,4 +1,4 @@
-AndroidInfo = require("utils.androidinfo")
+local AndroidInfo = require("utils.androidinfo")
 
 ---@class ObjectApi
 local ObjectApi = {
@@ -78,7 +78,7 @@ local ObjectApi = {
 
 
     FindHead = function(Address)
-        local validAddress = getValidStartAddress(Address)
+        local validAddress = Il2cpp.GetValidAddress(Address)
         local mayBeHead = {}
         for i = 1, 1000 do
             mayBeHead[i] = {
