@@ -39,7 +39,7 @@ local __bundle_require, __bundle_loaded, __bundle_register, __bundle_modules = (
 	end
 
 	return require, loaded, register, modules
-end)(nil)
+end)(require)
 __bundle_register("GGIl2cpp", function(require, _LOADED, __bundle_register, __bundle_modules)
 require("utils.il2cppconst")
 require("il2cpp")
@@ -153,17 +153,6 @@ require("il2cpp")
 ---@class Il2CppTypeDefinitionApi
 ---@field fieldStart number
 
-
-
-Protect = {
-    ErrorHandler = function(err)
-        return {Error = err}
-    end,
-    Call = function(self, fun, ...) 
-        return ({xpcall(fun, self.ErrorHandler, ...)})[2]
-    end
-}
-
 return Il2cpp
 end)
 __bundle_register("il2cpp", function(require, _LOADED, __bundle_register, __bundle_modules)
@@ -172,31 +161,6 @@ local VersionEngine = require("utils.version")
 local AndroidInfo = require("utils.androidinfo")
 local Searcher = require("utils.universalsearcher")
 
-function GetTypeClassName(index)
-    return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
-end
-
-function getAlfUtf16()
-    local Utf16 = {}
-    for s in string.gmatch('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', "..") do
-        local char = gg.bytes(s,'UTF-16LE')
-        Utf16[char[1] + (char[2] * 256)] = s
-    end
-    for s in string.gmatch("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_/0123456789-'", ".") do
-        local char = gg.bytes(s,'UTF-16LE')
-        Utf16[char[1] + (char[2] * 256)] = s
-    end
-    return Utf16
-end
-
-function getValidStartAddress(Address)
-    local lenAddress = #string.format("%X", Address)
-    local checkTable = {['C'] = true, ['4'] = true, ['8']= true, ['0'] = true}
-    while not checkTable[string.format("%X", Address):sub(lenAddress)] do
-        Address = Address - 1
-    end
-    return Address
-end
 
 
 ---@class Il2cpp
@@ -357,32 +321,6 @@ Il2cpp = {
     end,
 
 
-    Utf16ToString = function(Address)
-        local bytes, strAddress = {}, Il2cpp.FixValue(Address) + (AndroidInfo.platform and 0x10 or 0x8)
-        local num = gg.getValues({{
-            address = strAddress,
-            flags = gg.TYPE_DWORD
-        }})[1].value
-        if num > 0 and num < 200 then
-            for i = 1, num + 1 do
-                bytes[#bytes + 1] = {
-                    address = strAddress + (i << 1),
-                    flags = gg.TYPE_WORD
-                }
-            end
-        end
-        return #bytes > 0 and tostring(setmetatable(gg.getValues(bytes), {
-            __tostring = function(self)
-                local Utf16 = getAlfUtf16()
-                for k, v in ipairs(self) do
-                    self[k] = v.value == 32 and " " or (Utf16[v.value] or "")
-                end
-                return table.concat(self)
-            end
-        })) or ""
-    end,
-
-
     ---@param bytes string
     ChangeBytesOrder = function(bytes)
         local newBytes, index, lenBytes = {}, 0, #bytes / 2
@@ -396,6 +334,16 @@ Il2cpp = {
 
     FixValue = function(val)
         return AndroidInfo.platform and val & 0x00FFFFFFFFFFFFFF or val & 0xFFFFFFFF
+    end,
+
+
+    GetValidAddress = function(Address)
+        local lenAddress = #string.format("%X", Address)
+        local checkTable = {['C'] = true, ['4'] = true, ['8']= true, ['0'] = true}
+        while not checkTable[string.format("%X", Address):sub(lenAddress)] do
+            Address = Address - 1
+        end
+        return Address
     end,
 
 
@@ -706,7 +654,7 @@ local ClassInfoApi = {
 return ClassInfoApi
 end)
 __bundle_register("il2cppstruct.object", function(require, _LOADED, __bundle_register, __bundle_modules)
-AndroidInfo = require("utils.androidinfo")
+local AndroidInfo = require("utils.androidinfo")
 
 ---@class ObjectApi
 local ObjectApi = {
@@ -786,7 +734,7 @@ local ObjectApi = {
 
 
     FindHead = function(Address)
-        local validAddress = getValidStartAddress(Address)
+        local validAddress = Il2cpp.GetValidAddress(Address)
         local mayBeHead = {}
         for i = 1, 1000 do
             mayBeHead[i] = {
@@ -798,17 +746,11 @@ local ObjectApi = {
         for i = 1, #mayBeHead do
             local mayBeClass = Il2cpp.FixValue(mayBeHead[i].value)
             if Il2cpp.ClassApi.IsClassInfo(mayBeClass) then
-                return mayBeHead[i].address
+                return mayBeHead[i]
             end
         end
-        return 0
+        return {value = 0, address = 0}
     end,
-
-
-    ---@param self ObjectApi
-    Set = function(self, Address)
-        return gg.getValues({{address = self.FindHead(Address), flags = Il2cpp.MainType}})[1]
-    end
 }
 
 return ObjectApi
@@ -822,6 +764,8 @@ local AndroidInfo = {
 return AndroidInfo
 end)
 __bundle_register("il2cppstruct.class", function(require, _LOADED, __bundle_register, __bundle_modules)
+local Protect = require("utils.protect")
+
 ---@class ClassApi
 ---@field NameOffset number
 ---@field MethodsStep number
@@ -1064,7 +1008,21 @@ local ClassApi = {
 
 return ClassApi
 end)
+__bundle_register("utils.protect", function(require, _LOADED, __bundle_register, __bundle_modules)
+local Protect = {
+    ErrorHandler = function(err)
+        return {Error = err}
+    end,
+    Call = function(self, fun, ...) 
+        return ({xpcall(fun, self.ErrorHandler, ...)})[2]
+    end
+}
+
+return Protect
+end)
 __bundle_register("il2cppstruct.field", function(require, _LOADED, __bundle_register, __bundle_modules)
+local Protect = require("utils.protect")
+
 ---@class FieldApi
 ---@field Offset number
 ---@field Type number
@@ -1076,19 +1034,24 @@ local FieldApi = {
     ---@param self FieldApi
     ---@param FieldInfoAddress number
     UnpackFieldInfo = function(self, FieldInfoAddress)
-        return {{ -- Field Name
-            address = FieldInfoAddress,
-            flags = Il2cpp.MainType
-        }, { -- Offset Field
-            address = FieldInfoAddress + self.Offset,
-            flags = gg.TYPE_WORD
-        }, { -- Field type
-            address = FieldInfoAddress + self.Type,
-            flags = Il2cpp.MainType
-        }, { -- Class address
-            address = FieldInfoAddress + self.ClassOffset,
-            flags = Il2cpp.MainType
-        }}
+        return {
+            { -- Field Name
+                address = FieldInfoAddress,
+                flags = Il2cpp.MainType
+            }, 
+            { -- Offset Field
+                address = FieldInfoAddress + self.Offset,
+                flags = gg.TYPE_WORD
+            }, 
+            { -- Field type
+                address = FieldInfoAddress + self.Type,
+                flags = Il2cpp.MainType
+            }, 
+            { -- Class address
+                address = FieldInfoAddress + self.ClassOffset,
+                flags = Il2cpp.MainType
+            }
+        }
     end,
 
 
@@ -1141,33 +1104,38 @@ local FieldApi = {
                 flags = Il2cpp.MainType
             }})[1].value
             if Il2cpp.ClassApi.IsClassInfo(classAddress) then
-                local Il2cppClass = Il2cpp.FindClass({{
-                    Class = classAddress,
-                    FieldsDump = true
-                }})[1]
-                for i, class in ipairs(Il2cppClass) do
-                    ResultTable[#ResultTable + 1] = class:GetFieldWithName(fieldName)
-                end
+                local result = self.FindFieldInClass(fieldName, classAddress)
+                table.move(result, 1, #result, #ResultTable + 1, ResultTable)
             end
         end
-        assert(#ResultTable > 0, 'The "' .. fieldName .. '" field is not initialized')
+        assert(type(ResultTable) == "table" and #ResultTable > 0, 'The "' .. fieldName .. '" field is not initialized')
         return ResultTable
     end,
 
 
+    ---@param self FieldApi
     FindFieldWithAddress = function(self, fieldAddress)
-        local ResultTable = {}
-        local Il2cppObject = Il2cpp.ObjectApi:Set(fieldAddress)
-        local fieldOffset = fieldAddress - Il2cppObject.address
-        local classAddress = Il2cpp.FixValue(Il2cppObject.value)
-        local Il2cppClass = Il2cpp.FindClass({{
-            Class = classAddress,
-            FieldsDump = true
-        }})[1]
-        for i, v in ipairs(Il2cppClass) do
-            ResultTable[#ResultTable + 1] = v:GetFieldWithOffset(fieldOffset)
-        end
+        local ObjectHead = Il2cpp.ObjectApi.FindHead(fieldAddress)
+        local fieldOffset = fieldAddress - ObjectHead.address
+        local classAddress = Il2cpp.FixValue(ObjectHead.value)
+        local ResultTable = self.FindFieldInClass(fieldOffset, classAddress)
         assert(#ResultTable > 0, 'nothing was found for this address 0x' .. string.format("%X", fieldAddress))
+        return ResultTable
+    end,
+
+    FindFieldInClass = function(fieldSearchCondition, classAddress)
+        local ResultTable = {}
+        local Il2cppClass = Il2cpp.FindClass({
+            {
+                Class = classAddress, 
+                FieldsDump = true
+            }
+        })[1]
+        for i, v in ipairs(Il2cppClass) do
+            ResultTable[#ResultTable + 1] = type(fieldSearchCondition) == "number" 
+                and v:GetFieldWithOffset(fieldSearchCondition)
+                or v:GetFieldWithName(fieldSearchCondition)
+        end
         return ResultTable
     end,
 
@@ -1447,7 +1415,8 @@ local GlobalMetadataApi = {
 return GlobalMetadataApi
 end)
 __bundle_register("il2cppstruct.method", function(require, _LOADED, __bundle_register, __bundle_modules)
-AndroidInfo = require("utils.androidinfo")
+local AndroidInfo = require("utils.androidinfo")
+local Protect = require("utils.protect")
 
 ---@class MethodsApi
 ---@field ClassOffset number
@@ -1656,8 +1625,12 @@ local TypeApi = {
         [24] = "IntPtr",
         [25] = "UIntPtr",
         [28] = "object",
-        [17] = GetTypeClassName,
-        [18] = GetTypeClassName,
+        [17] = function(index)
+            return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
+        end,
+        [18] = function(index)
+            return Il2cpp.GlobalMetadataApi:GetClassNameFromIndex(index)
+        end,
         [29] = function(index)
             local typeMassiv = gg.getValues({
                 {
