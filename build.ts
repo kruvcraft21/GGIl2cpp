@@ -4,13 +4,12 @@ import path from "path"
 
 const bundledLua = bundle('./index.lua', {
     metadata: false,
-    rootModuleName: "GGIl2cpp",
-    isolate : true
+    rootModuleName: "GGIl2cpp"
 })
 
 const buildPath = path.normalize("build/Il2cppApi.lua")
 
 fs.writeFile(buildPath, bundledLua, (err : any) => {
     if (err) throw err
-    console.log("Il2cppApi.lua -> \n" + fs.readFileSync(buildPath))
+    console.log("Il2cppApi.lua -> ОК\n")
 })

@@ -43,3 +43,4 @@ luac.out
 node_modules
 package-lock.json
 gg.lua
+testbuild.ts

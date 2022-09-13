@@ -11,19 +11,24 @@ local FieldApi = {
     ---@param self FieldApi
     ---@param FieldInfoAddress number
     UnpackFieldInfo = function(self, FieldInfoAddress)
-        return {{ -- Field Name
-            address = FieldInfoAddress,
-            flags = Il2cpp.MainType
-        }, { -- Offset Field
-            address = FieldInfoAddress + self.Offset,
-            flags = gg.TYPE_WORD
-        }, { -- Field type
-            address = FieldInfoAddress + self.Type,
-            flags = Il2cpp.MainType
-        }, { -- Class address
-            address = FieldInfoAddress + self.ClassOffset,
-            flags = Il2cpp.MainType
-        }}
+        return {
+            { -- Field Name
+                address = FieldInfoAddress,
+                flags = Il2cpp.MainType
+            }, 
+            { -- Offset Field
+                address = FieldInfoAddress + self.Offset,
+                flags = gg.TYPE_WORD
+            }, 
+            { -- Field type
+                address = FieldInfoAddress + self.Type,
+                flags = Il2cpp.MainType
+            }, 
+            { -- Class address
+                address = FieldInfoAddress + self.ClassOffset,
+                flags = Il2cpp.MainType
+            }
+        }
     end,
 
 
