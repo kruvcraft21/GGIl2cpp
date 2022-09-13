@@ -81,33 +81,38 @@ local FieldApi = {
                 flags = Il2cpp.MainType
             }})[1].value
             if Il2cpp.ClassApi.IsClassInfo(classAddress) then
-                local Il2cppClass = Il2cpp.FindClass({{
-                    Class = classAddress,
-                    FieldsDump = true
-                }})[1]
-                for i, class in ipairs(Il2cppClass) do
-                    ResultTable[#ResultTable + 1] = class:GetFieldWithName(fieldName)
-                end
+                local result = self.FindFieldInClass(fieldName, classAddress)
+                table.move(result, 1, #result, #ResultTable + 1, ResultTable)
             end
         end
-        assert(#ResultTable > 0, 'The "' .. fieldName .. '" field is not initialized')
+        assert(type(ResultTable) == "table" and #ResultTable > 0, 'The "' .. fieldName .. '" field is not initialized')
         return ResultTable
     end,
 
 
+    ---@param self FieldApi
     FindFieldWithAddress = function(self, fieldAddress)
-        local ResultTable = {}
-        local Il2cppObject = Il2cpp.ObjectApi:Set(fieldAddress)
-        local fieldOffset = fieldAddress - Il2cppObject.address
-        local classAddress = Il2cpp.FixValue(Il2cppObject.value)
-        local Il2cppClass = Il2cpp.FindClass({{
-            Class = classAddress,
-            FieldsDump = true
-        }})[1]
-        for i, v in ipairs(Il2cppClass) do
-            ResultTable[#ResultTable + 1] = v:GetFieldWithOffset(fieldOffset)
-        end
+        local ObjectHead = Il2cpp.ObjectApi.FindHead(fieldAddress)
+        local fieldOffset = fieldAddress - ObjectHead.address
+        local classAddress = Il2cpp.FixValue(ObjectHead.value)
+        local ResultTable = self.FindFieldInClass(fieldOffset, classAddress)
         assert(#ResultTable > 0, 'nothing was found for this address 0x' .. string.format("%X", fieldAddress))
+        return ResultTable
+    end,
+
+    FindFieldInClass = function(fieldSearchCondition, classAddress)
+        local ResultTable = {}
+        local Il2cppClass = Il2cpp.FindClass({
+            {
+                Class = classAddress, 
+                FieldsDump = true
+            }
+        })[1]
+        for i, v in ipairs(Il2cppClass) do
+            ResultTable[#ResultTable + 1] = type(fieldSearchCondition) == "number" 
+                and v:GetFieldWithOffset(fieldSearchCondition)
+                or v:GetFieldWithName(fieldSearchCondition)
+        end
         return ResultTable
     end,
 

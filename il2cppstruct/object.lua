@@ -90,17 +90,11 @@ local ObjectApi = {
         for i = 1, #mayBeHead do
             local mayBeClass = Il2cpp.FixValue(mayBeHead[i].value)
             if Il2cpp.ClassApi.IsClassInfo(mayBeClass) then
-                return mayBeHead[i].address
+                return mayBeHead[i]
             end
         end
-        return 0
+        return {value = 0, address = 0}
     end,
-
-
-    ---@param self ObjectApi
-    Set = function(self, Address)
-        return gg.getValues({{address = self.FindHead(Address), flags = Il2cpp.MainType}})[1]
-    end
 }
 
 return ObjectApi
