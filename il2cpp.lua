@@ -180,12 +180,13 @@ Il2cpp = {
 
 
     GetValidAddress = function(Address)
-        local lenAddress = #string.format("%X", Address)
-        local checkTable = {['C'] = true, ['4'] = true, ['8']= true, ['0'] = true}
-        while not checkTable[string.format("%X", Address):sub(lenAddress)] do
-            Address = Address - 1
+        local lastByte = Address & 0x000000000000000F
+        local delta = 0
+        local checkTable = {[12] = true, [4] = true, [8] = true, [0] = true}
+        while not checkTable[lastByte - delta] do
+            delta = delta + 1
         end
-        return Address
+        return Address - delta
     end,
 
 
