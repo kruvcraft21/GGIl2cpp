@@ -6,7 +6,7 @@ This script is only needed to make it easier to work with Il2cpp. This script wo
 
 The module has support for the [Lua](https://marketplace.visualstudio.com/items?itemName=yinfei.luahelper) plugin for [VS Code](https://code.visualstudio.com/), that is, some functions have a description that this plugin can display.
 
-The script is divided and available for assembly. You can also use an already built version from the [build](/build/) folder or from the [Releases](https://github.com/kruvcraft21/GGIl2cpp/releases/latest) tab.
+The script is divided and available for assembly. You can also use an already built version from the [build](/build/) folder or from the [Releases](https://github.com/kruvcraft21/GGIl2cpp/releases/latest) tab. Script is built using the [luabundle](https://github.com/Benjamin-Dobell/luabundle) library.
 
 This Module has 6 functions 
 
@@ -285,6 +285,15 @@ After you have made changes to the module, you can build it, for this you will n
 
 ```shell
 git clone https://github.com/kruvcraft21/GGIl2cpp
+cd GGIl2cpp
 npm i
 npm start
+```
+
+or 
+
+```shell
+git clone https://github.com/kruvcraft21/GGIl2cpp
+cd GGIl2cpp
+ts-node build.ts
 ```
