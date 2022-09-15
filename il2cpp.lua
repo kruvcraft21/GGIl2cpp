@@ -205,25 +205,38 @@ Il2cpp = {
 
 Il2cpp = setmetatable(Il2cpp, {
     ---@param self Il2cpp
-    __call = function(self, libilcpp, globalMetadata, il2cppVersion, globalMetadataHeader, metadataRegistration)
+    ---@param config table
+    -- libilcpp, globalMetadata, il2cppVersion, globalMetadataHeader, metadataRegistration
+    __call = function(self, config)
+        local configIsnotNil = config and true
 
-        if libilcpp then
-            self.il2cppStart, self.il2cppEnd = libilcpp.start, libilcpp['end']
+        if configIsnotNil and config.libilcpp then
+            self.il2cppStart, self.il2cppEnd = config.libilcpp.start, config.libilcpp['end']
         else
             self.il2cppStart, self.il2cppEnd = Searcher.FindIl2cpp()
         end
 
-        if globalMetadata then
-            self.globalMetadataStart, self.globalMetadataEnd = globalMetadata.start, globalMetadata['end']
+        if configIsnotNil and config.globalMetadata then
+            self.globalMetadataStart, self.globalMetadataEnd = config.globalMetadata.start, config.globalMetadata['end']
         else
             self.globalMetadataStart, self.globalMetadataEnd = Searcher:FindGlobalMetaData()
         end
 
-        self.globalMetadataHeader = globalMetadataHeader or self.globalMetadataStart
+        if configIsnotNil and config.globalMetadataHeader then
+            self.globalMetadataHeader = config.globalMetadataHeader
+        else
+            self.globalMetadataHeader = self.globalMetadataStart
+        end
+        
+        if configIsnotNil then
+            self.MetadataRegistrationApi.metadataRegistration = config.metadataRegistration
+        end
 
-        self.MetadataRegistrationApi.metadataRegistration = metadataRegistration
-
-        VersionEngine:ChooseVersion(il2cppVersion, self.globalMetadataHeader)
+        if configIsnotNil then
+            VersionEngine:ChooseVersion(config.il2cppVersion, self.globalMetadataHeader)
+        else
+            VersionEngine:ChooseVersion(nil, self.globalMetadataHeader)
+        end
 
         Il2cppMemory:ClearMemorize()
     end
