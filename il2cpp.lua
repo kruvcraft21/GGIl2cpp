@@ -223,7 +223,7 @@ Il2cpp = setmetatable(Il2cpp, {
 
         self.MetadataRegistrationApi.metadataRegistration = metadataRegistration
 
-        VersionEngine:ChooseVersion(il2cppVersion)
+        VersionEngine:ChooseVersion(il2cppVersion, self.globalMetadataHeader)
 
         Il2cppMemory:ClearMemorize()
     end

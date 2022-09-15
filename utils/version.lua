@@ -62,21 +62,30 @@ local VersionEngine = {
         gg.searchNumber("32h;30h;0~~0;0~~0;2Eh;0~~0;2Eh;66h::11", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 16)
         local versionTable = gg.getResults(1)
         gg.clearResults()
-        local verisonName = Il2cpp.Utf8ToString(versionTable[1].address)
+        return gg.getResultsCount() > 0 and versionTable[1].address or 0
+    end,
+    ReadUnityVersion = function(versionAddress)
+        local verisonName = Il2cpp.Utf8ToString(versionAddress)
         local i, j = string.find(verisonName, "f")
         if j then verisonName = string.sub(verisonName, 1, j - 1) end
         return string.gmatch(verisonName, "([^%.]+)%.([^%.]+)%.([^%.]+)")()
     end,
     ---@param self VersionEngine
     ---@param version? number
-    ChooseVersion = function(self, version)
+    ChooseVersion = function(self, version, globalMetadataHeader)
         if not version then
-            local p1, p2, p3 = self.GetUnityVersion()
-            ---@type number | fun(p2 : string, p3: string):number
-            version = self.Year[tonumber(p1)] or 29
-            if type(version) == 'function' then
-                version = version(p2, p3)
+            local unityVersionAddress = self.GetUnityVersion()
+            if unityVersionAddress == 0 then
+                version = gg.getValues({{address = globalMetadataHeader + 0x4, flags = gg.TYPE_DWORD}})[1].value
+            else
+                local p1, p2, p3 = self.ReadUnityVersion(unityVersionAddress)
+                ---@type number | fun(p2 : string, p3: string):number
+                version = self.Year[tonumber(p1)] or 29
+                if type(version) == 'function' then
+                    version = version(p2, p3)
+                end
             end
+            
         end
         local api = assert(Il2cppApi[version], 'Not support this il2cpp version')
         Il2cpp.FieldApi.Offset = api.FieldApiOffset
