@@ -20,7 +20,7 @@ Il2cpp.FindFields()
 ```
 
 
-* `Il2cpp()` - This function takes from 0 to 2 arguments, it is needed to indicate the beginning of global-metadata and libil2cpp. Without it, the function located in the Il2cpp table will not work.
+* `Il2cpp()` - TThis function takes one argument, only a table. Without this function, the module will not work correctly.
 * `Il2cpp.FindMethods()` - Searches for a method, or rather information on the method, by name or by offset, you can also send an address in memory to it.
 * `Il2cpp.FindClass()` - Searches for a class, by name, or by address in memory.
 * `Il2cpp.PatchesAddress()` - Patch `Bytescodes` to `add`
@@ -220,19 +220,42 @@ Without the `Il2cpp()` function, some functions will not work, since this functi
 Example of using this function:
 
 ```lua
-Il2cpp() -- in this case, "Il2cpp()" will find itself "libil2cpp.so" and "global-metadata.dat".
+-- in this case, "Il2cpp()" will find all the data it needs, maybe...
+Il2cpp()
 
+-- in this case, "Il2cpp()" will find and remember the location by itself"libil2cpp.so ", which was given to him.
 local libil2cpp = {start = 0x1234, ['end'] = 0x8888}
 
-Il2cpp(libil2cpp) -- in this case, "Il2cpp()" will find "global-metadata.dat" itself and remember the location"libil2cpp.so ", which was given to him.
+Il2cpp({libil2cpp = libil2cpp}) 
+-- or
+Il2cpp{libil2cpp = {start = 0x1234, ['end'] = 0x8888}}
 
+-- in this case, "Il2cpp()" will remember the location "libil2cpp.so " and "global-metadata.dat", which were passed to him.
 local globalmetadata = {start = 0x9888, ['end'] = 0x14888}
 
-Il2cpp(libil2cpp, globalmetadata) -- in this case, "Il2cpp()" and will remember the location "libil2cpp.so " and "global-metadata.dat", which was passed to him.
+Il2cpp({libil2cpp = libil2cpp, globalmetadata = globalmetadata})
+-- or
+Il2cpp{
+    libil2cpp = {start = 0x1234, ['end'] = 0x8888}, 
+    globalmetadata = {start = 0x9888, ['end'] = 0x14888}
+}
 
-Il2cpp(nil, nil, 27) -- in this case , the method will find "libil2cpp.so" and "global-metadata.dat" and will remember the "Il2cpp" version
+-- in this case, the module will remember the "Il2cpp" version
+Il2cpp({il2cppVersion = 27})
+-- or
+Il2cpp{
+    il2cppVersion = 27
+}
 
-Il2cpp(nil, nil, nil, globalmetadata.start) -- in this case , the method will find "libil2cpp.so ", and "global-metadata.dat", and the "Il2cpp" version, and will remember "globalMetadataHeader"
+-- in this case, the module will remember "globalMetadataHeader"
+Il2cpp({globalMetadataHeader = globalmetadata.start})
+-- or
+Il2cpp{globalMetadataHeader = globalmetadata.start}
+
+-- in this case, the module will remember "metadataRegistration"
+Il2cpp({metadataRegistration = 0x123142})
+-- or
+Il2cpp{metadataRegistration = 0x123142}
 ```
 
 It is worth talking about processing the results of the module.

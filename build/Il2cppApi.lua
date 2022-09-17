@@ -338,12 +338,13 @@ Il2cpp = {
 
 
     GetValidAddress = function(Address)
-        local lenAddress = #string.format("%X", Address)
-        local checkTable = {['C'] = true, ['4'] = true, ['8']= true, ['0'] = true}
-        while not checkTable[string.format("%X", Address):sub(lenAddress)] do
-            Address = Address - 1
+        local lastByte = Address & 0x000000000000000F
+        local delta = 0
+        local checkTable = {[12] = true, [4] = true, [8] = true, [0] = true}
+        while not checkTable[lastByte - delta] do
+            delta = delta + 1
         end
-        return Address
+        return Address - delta
     end,
 
 
@@ -362,25 +363,38 @@ Il2cpp = {
 
 Il2cpp = setmetatable(Il2cpp, {
     ---@param self Il2cpp
-    __call = function(self, libilcpp, globalMetadata, il2cppVersion, globalMetadataHeader, metadataRegistration)
+    ---@param config table
+    -- libilcpp, globalMetadata, il2cppVersion, globalMetadataHeader, metadataRegistration
+    __call = function(self, config)
+        local configIsnotNil = config and true
 
-        if libilcpp then
-            self.il2cppStart, self.il2cppEnd = libilcpp.start, libilcpp['end']
+        if configIsnotNil and config.libilcpp then
+            self.il2cppStart, self.il2cppEnd = config.libilcpp.start, config.libilcpp['end']
         else
             self.il2cppStart, self.il2cppEnd = Searcher.FindIl2cpp()
         end
 
-        if globalMetadata then
-            self.globalMetadataStart, self.globalMetadataEnd = globalMetadata.start, globalMetadata['end']
+        if configIsnotNil and config.globalMetadata then
+            self.globalMetadataStart, self.globalMetadataEnd = config.globalMetadata.start, config.globalMetadata['end']
         else
             self.globalMetadataStart, self.globalMetadataEnd = Searcher:FindGlobalMetaData()
         end
 
-        self.globalMetadataHeader = globalMetadataHeader or self.globalMetadataStart
+        if configIsnotNil and config.globalMetadataHeader then
+            self.globalMetadataHeader = config.globalMetadataHeader
+        else
+            self.globalMetadataHeader = self.globalMetadataStart
+        end
+        
+        if configIsnotNil then
+            self.MetadataRegistrationApi.metadataRegistration = config.metadataRegistration
+        end
 
-        self.MetadataRegistrationApi.metadataRegistration = metadataRegistration
-
-        VersionEngine:ChooseVersion(il2cppVersion)
+        if configIsnotNil then
+            VersionEngine:ChooseVersion(config.il2cppVersion, self.globalMetadataHeader)
+        else
+            VersionEngine:ChooseVersion(nil, self.globalMetadataHeader)
+        end
 
         Il2cppMemory:ClearMemorize()
     end
@@ -712,7 +726,7 @@ local ObjectApi = {
             flags = Il2cpp.MainType
         }})
         gg.searchPointer(0)
-        if gg.getResultsCount() <= 0 and platform and sdk >= 30 then
+        if gg.getResultsCount() <= 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
             gg.searchNumber(tostring(tonumber(ClassAddress, 16) | 0xB400000000000000), gg.TYPE_QWORD)
         end
         local FindsResult = gg.getResults(gg.getResultsCount())
@@ -1867,30 +1881,37 @@ local VersionEngine = {
             return 29
         end,
     },
-    ---@return string @year
-    ---@return string 
-    ---@return string
+    ---@return number
     GetUnityVersion = function()
         gg.setRanges(gg.REGION_CODE_APP)
         gg.clearResults()
         gg.searchNumber("32h;30h;0~~0;0~~0;2Eh;0~~0;2Eh;66h::11", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 16)
         local versionTable = gg.getResults(1)
         gg.clearResults()
-        local verisonName = Il2cpp.Utf8ToString(versionTable[1].address)
+        return gg.getResultsCount() > 0 and versionTable[1].address or 0
+    end,
+    ReadUnityVersion = function(versionAddress)
+        local verisonName = Il2cpp.Utf8ToString(versionAddress)
         local i, j = string.find(verisonName, "f")
         if j then verisonName = string.sub(verisonName, 1, j - 1) end
         return string.gmatch(verisonName, "([^%.]+)%.([^%.]+)%.([^%.]+)")()
     end,
     ---@param self VersionEngine
     ---@param version? number
-    ChooseVersion = function(self, version)
+    ChooseVersion = function(self, version, globalMetadataHeader)
         if not version then
-            local p1, p2, p3 = self.GetUnityVersion()
-            ---@type number | fun(p2 : string, p3: string):number
-            version = self.Year[tonumber(p1)] or 29
-            if type(version) == 'function' then
-                version = version(p2, p3)
+            local unityVersionAddress = self.GetUnityVersion()
+            if unityVersionAddress == 0 then
+                version = gg.getValues({{address = globalMetadataHeader + 0x4, flags = gg.TYPE_DWORD}})[1].value
+            else
+                local p1, p2, p3 = self.ReadUnityVersion(unityVersionAddress)
+                ---@type number | fun(p2 : string, p3: string):number
+                version = self.Year[tonumber(p1)] or 29
+                if type(version) == 'function' then
+                    version = version(p2, p3)
+                end
             end
+            
         end
         local api = assert(Il2cppApi[version], 'Not support this il2cpp version')
         Il2cpp.FieldApi.Offset = api.FieldApiOffset
@@ -1963,6 +1984,134 @@ local AndroidInfo = require("utils.androidinfo")
 
 ---@type table<number, Il2cppApi>
 Il2cppApi = {
+    [20] = {
+        FieldApiOffset = 0xC,
+        FieldApiType = 0x4,
+        FieldApiClassOffset = 0x8,
+        ClassApiNameOffset = 0x8,
+        ClassApiMethodsStep = 2,
+        ClassApiCountMethods = 0x9C,
+        ClassApiMethodsLink = 0x3C,
+        ClassApiFieldsLink = 0x30,
+        ClassApiFieldsStep = 0x18,
+        ClassApiCountFields = 0xA0,
+        ClassApiParentOffset = 0x24,
+        ClassApiNameSpaceOffset = 0xC,
+        ClassApiStaticFieldDataOffset = 0x50,
+        ClassApiEnumType = 0xB0,
+        ClassApiEnumRsh = 2,
+        ClassApiTypeMetadataHandle = 0x2C,
+        ClassApiInstanceSize = 0x78,
+        MethodsApiClassOffset = 0xC,
+        MethodsApiNameOffset = 0x8,
+        MethodsApiParamCount = 0x2E,
+        MethodsApiReturnType = 0x10,
+        typeDefinitionsSize = 0x70,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
+        TypeApiType = 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x38,
+        MetadataRegistrationApitypes = 0x1C,
+    },
+    [21] = {
+        FieldApiOffset = 0xC,
+        FieldApiType = 0x4,
+        FieldApiClassOffset = 0x8,
+        ClassApiNameOffset = 0x8,
+        ClassApiMethodsStep = 2,
+        ClassApiCountMethods = 0x9C,
+        ClassApiMethodsLink = 0x3C,
+        ClassApiFieldsLink = 0x30,
+        ClassApiFieldsStep = 0x18,
+        ClassApiCountFields = 0xA0,
+        ClassApiParentOffset = 0x24,
+        ClassApiNameSpaceOffset = 0xC,
+        ClassApiStaticFieldDataOffset = 0x50,
+        ClassApiEnumType = 0xB0,
+        ClassApiEnumRsh = 2,
+        ClassApiTypeMetadataHandle = 0x2C,
+        ClassApiInstanceSize = 0x78,
+        MethodsApiClassOffset = 0xC,
+        MethodsApiNameOffset = 0x8,
+        MethodsApiParamCount = 0x2E,
+        MethodsApiReturnType = 0x10,
+        typeDefinitionsSize = 0x78,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
+        TypeApiType = 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x40,
+        MetadataRegistrationApitypes = 0x1C,
+    },
+    [22] = {
+        FieldApiOffset = 0xC,
+        FieldApiType = 0x4,
+        FieldApiClassOffset = 0x8,
+        ClassApiNameOffset = 0x8,
+        ClassApiMethodsStep = 2,
+        ClassApiCountMethods = 0x94,
+        ClassApiMethodsLink = 0x3C,
+        ClassApiFieldsLink = 0x30,
+        ClassApiFieldsStep = 0x18,
+        ClassApiCountFields = 0x98,
+        ClassApiParentOffset = 0x24,
+        ClassApiNameSpaceOffset = 0xC,
+        ClassApiStaticFieldDataOffset = 0x4C,
+        ClassApiEnumType = 0xA9,
+        ClassApiEnumRsh = 2,
+        ClassApiTypeMetadataHandle = 0x2C,
+        ClassApiInstanceSize = 0x70,
+        MethodsApiClassOffset = 0xC,
+        MethodsApiNameOffset = 0x8,
+        MethodsApiParamCount = 0x2E,
+        MethodsApiReturnType = 0x10,
+        typeDefinitionsSize = 0x78,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
+        TypeApiType = 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x40,
+        MetadataRegistrationApitypes = 0x1C,
+    },
+    [23] = {
+        FieldApiOffset = 0xC,
+        FieldApiType = 0x4,
+        FieldApiClassOffset = 0x8,
+        ClassApiNameOffset = 0x8,
+        ClassApiMethodsStep = 2,
+        ClassApiCountMethods = 0x9C,
+        ClassApiMethodsLink = 0x40,
+        ClassApiFieldsLink = 0x34,
+        ClassApiFieldsStep = 0x18,
+        ClassApiCountFields = 0xA0,
+        ClassApiParentOffset = 0x24,
+        ClassApiNameSpaceOffset = 0xC,
+        ClassApiStaticFieldDataOffset = 0x50,
+        ClassApiEnumType = 0xB1,
+        ClassApiEnumRsh = 2,
+        ClassApiTypeMetadataHandle = 0x2C,
+        ClassApiInstanceSize = 0x78,
+        MethodsApiClassOffset = 0xC,
+        MethodsApiNameOffset = 0x8,
+        MethodsApiParamCount = 0x2E,
+        MethodsApiReturnType = 0x10,
+        typeDefinitionsSize = 104,
+        typeDefinitionsOffset = 0xA0,
+        stringOffset = 0x18,
+        fieldDefaultValuesOffset = 0x40,
+        fieldDefaultValuesSize = 0x44,
+        fieldAndParameterDefaultValueDataOffset = 0x48,
+        TypeApiType = 0x6,
+        Il2CppTypeDefinitionApifieldStart = 0x30,
+        MetadataRegistrationApitypes = 0x1C,
+    },
     [24.1] = {
         FieldApiOffset = AndroidInfo.platform and 0x18 or 0xC,
         FieldApiType = AndroidInfo.platform and 0x8 or 0x4,
