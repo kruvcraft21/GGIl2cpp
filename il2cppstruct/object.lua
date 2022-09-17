@@ -56,7 +56,7 @@ local ObjectApi = {
             flags = Il2cpp.MainType
         }})
         gg.searchPointer(0)
-        if gg.getResultsCount() <= 0 and platform and sdk >= 30 then
+        if gg.getResultsCount() <= 0 and AndroidInfo.platform and AndroidInfo.sdk >= 30 then
             gg.searchNumber(tostring(tonumber(ClassAddress, 16) | 0xB400000000000000), gg.TYPE_QWORD)
         end
         local FindsResult = gg.getResults(gg.getResultsCount())

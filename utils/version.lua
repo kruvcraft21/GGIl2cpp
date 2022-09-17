@@ -53,9 +53,7 @@ local VersionEngine = {
             return 29
         end,
     },
-    ---@return string @year
-    ---@return string 
-    ---@return string
+    ---@return number
     GetUnityVersion = function()
         gg.setRanges(gg.REGION_CODE_APP)
         gg.clearResults()
