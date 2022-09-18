@@ -107,6 +107,14 @@ require("il2cpp")
 ---@field MethodsDump boolean
 
 
+---@class Il2cppConfig
+---@field libilcpp table | nil
+---@field globalMetadata table | nil
+---@field il2cppVersion number | nil
+---@field globalMetadataHeader number | nil
+---@field metadataRegistration number | nil
+
+
 ---@class Il2CppTypeDefinitionApi
 ---@field fieldStart number
 

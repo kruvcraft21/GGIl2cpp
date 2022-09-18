@@ -205,38 +205,31 @@ Il2cpp = {
 
 Il2cpp = setmetatable(Il2cpp, {
     ---@param self Il2cpp
-    ---@param config table
-    -- libilcpp, globalMetadata, il2cppVersion, globalMetadataHeader, metadataRegistration
+    ---@param config? Il2cppConfig
     __call = function(self, config)
-        local configIsnotNil = config and true
+        config = config or {}
 
-        if configIsnotNil and config.libilcpp then
+        if config.libilcpp then
             self.il2cppStart, self.il2cppEnd = config.libilcpp.start, config.libilcpp['end']
         else
             self.il2cppStart, self.il2cppEnd = Searcher.FindIl2cpp()
         end
 
-        if configIsnotNil and config.globalMetadata then
+        if config.globalMetadata then
             self.globalMetadataStart, self.globalMetadataEnd = config.globalMetadata.start, config.globalMetadata['end']
         else
             self.globalMetadataStart, self.globalMetadataEnd = Searcher:FindGlobalMetaData()
         end
 
-        if configIsnotNil and config.globalMetadataHeader then
+        if config.globalMetadataHeader then
             self.globalMetadataHeader = config.globalMetadataHeader
         else
             self.globalMetadataHeader = self.globalMetadataStart
         end
         
-        if configIsnotNil then
-            self.MetadataRegistrationApi.metadataRegistration = config.metadataRegistration
-        end
+        self.MetadataRegistrationApi.metadataRegistration = config.metadataRegistration
 
-        if configIsnotNil then
-            VersionEngine:ChooseVersion(config.il2cppVersion, self.globalMetadataHeader)
-        else
-            VersionEngine:ChooseVersion(nil, self.globalMetadataHeader)
-        end
+        VersionEngine:ChooseVersion(config.il2cppVersion, self.globalMetadataHeader)
 
         Il2cppMemory:ClearMemorize()
     end
