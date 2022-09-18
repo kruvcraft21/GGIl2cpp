@@ -54,6 +54,7 @@ class MyClass {
     }
 }
 ```
+### `Il2cpp.FindClass` and `Il2cpp.FindMethods`
 
 As an example, I want to get information about the class and about the methods `Method2` and `Method1` :
 
@@ -188,6 +189,7 @@ arm64:
 
 
 ```
+### `Il2cpp.FindFields`
 
 Example of how `Il2cpp.FindFields()` works:
 ```lua
@@ -214,6 +216,8 @@ print(Il2cpp.FindFields({'field1'}))
 }
 ]]
 ```
+
+### `Il2cpp`
 
 Without the `Il2cpp()` function, some functions will not work, since this function remembers or finds the location `libil2cpp.so` and `global-metadata.dat`. You can also specify the version of `Il2cpp`, this will be required in cases where the module cannot determine the version itself.
 
@@ -257,6 +261,8 @@ Il2cpp({metadataRegistration = 0x123142})
 -- or
 Il2cpp{metadataRegistration = 0x123142}
 ```
+
+### Processing of module execution results
 
 It is worth talking about processing the results of the module.
 
