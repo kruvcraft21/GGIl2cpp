@@ -1,6 +1,6 @@
 {
   "name": "ggil2cpp",
-  "version": "1.5.3",
+  "version": "1.6.0",
   "description": "",
   "main": "build.ts",
   "scripts": {

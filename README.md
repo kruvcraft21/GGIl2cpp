@@ -20,7 +20,7 @@ Il2cpp.FindFields()
 ```
 
 
-* `Il2cpp()` - TThis function takes one argument, only a table. Without this function, the module will not work correctly.
+* `Il2cpp()` - This function takes one argument, only a table. Without this function, the module will not work correctly.
 * `Il2cpp.FindMethods()` - Searches for a method, or rather information on the method, by name or by offset, you can also send an address in memory to it.
 * `Il2cpp.FindClass()` - Searches for a class, by name, or by address in memory.
 * `Il2cpp.PatchesAddress()` - Patch `Bytescodes` to `add`
