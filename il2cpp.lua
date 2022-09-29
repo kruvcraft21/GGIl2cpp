@@ -2,6 +2,7 @@ local Il2cppMemory = require("utils.il2cppmemory")
 local VersionEngine = require("utils.version")
 local AndroidInfo = require("utils.androidinfo")
 local Searcher = require("utils.universalsearcher")
+local PatchApi = require("utils.patchapi")
 
 
 
@@ -36,16 +37,20 @@ Il2cpp = {
     --- `Il2cpp.PatchesAddress(0x100, "\x20\x00\x80\x52\xc0\x03\x5f\xd6")`
     ---@param add number
     ---@param Bytescodes string
+    ---@return Patch
     PatchesAddress = function(add, Bytescodes)
-        local patch = {}
+        local patchCode = {}
         for code in string.gmatch(Bytescodes, '.') do
-            patch[#patch + 1] = {
-                address = add + #patch,
+            patchCode[#patchCode + 1] = {
+                address = add + #patchCode,
                 value = string.byte(code),
                 flags = gg.TYPE_BYTE
             }
         end
-        gg.setValues(patch)
+        ---@type Patch
+        local patch = PatchApi:Create(patchCode)
+        patch:Patch()
+        return patch
     end,
 
 
