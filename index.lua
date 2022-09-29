@@ -57,7 +57,7 @@ require("il2cpp")
 ---@field Error string
 
 
----@class MethodInfo : MethodInfoRaw
+---@class MethodInfo
 ---@field MethodName string
 ---@field Offset string
 ---@field AddressInMemory string

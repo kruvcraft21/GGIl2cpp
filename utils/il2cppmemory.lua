@@ -3,6 +3,7 @@
 ---@field Methods table<number | string, MethodInfo[] | ErrorSearch>
 ---@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
 ---@field Fields table<number | string, FieldInfo[] | ErrorSearch>
+---@field Results table
 ---@field DefaultValues table<number, string | number>
 ---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
 ---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
@@ -11,11 +12,28 @@
 ---@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
 ---@field GetInformaionOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
 ---@field SetInformaionOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
+---@field SaveResults fun(self : Il2cppMemory) : void
+---@field ClearSavedResults fun(self : Il2cppMemory) : void
 local Il2cppMemory = {
     Methods = {},
     Classes = {},
     Fields = {},
     DefaultValues = {},
+    Results = {},
+
+
+    ---@param self Il2cppMemory
+    SaveResults = function(self)
+        if gg.getResultsCount() > 0 then
+            self.Results = gg.getResults(gg.getResultsCount())
+        end
+    end,
+
+
+    ---@param self Il2cppMemory
+    ClearSavedResults = function(self)
+        self.Results = {}
+    end,
 
 
     ---@param self Il2cppMemory
@@ -94,6 +112,7 @@ local Il2cppMemory = {
         self.Classes = {}
         self.Fields = {}
         self.DefaultValues = {}
+        self.Results = {}
     end
 }
 

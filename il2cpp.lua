@@ -56,6 +56,7 @@ Il2cpp = {
     ---@param searchParams TypeForSearch[] @TypeForSearch = number | string
     ---@return table<number, MethodInfo[] | ErrorSearch>
     FindMethods = function(searchParams)
+        Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
             ---@type number | string
             local searchParam = searchParams[i]
@@ -66,6 +67,7 @@ Il2cpp = {
             end
             searchParams[i] = searchResult
         end
+        Il2cppMemory:ClearSavedResults()
         return searchParams
     end,
 
@@ -76,6 +78,7 @@ Il2cpp = {
     ---@param searchParams ClassConfig[]
     ---@return table<number, ClassInfo[] | ErrorSearch>
     FindClass = function(searchParams)
+        Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
             ---@type ClassConfig
             local searchParam = searchParams[i]
@@ -86,6 +89,7 @@ Il2cpp = {
             end
             searchParams[i] = searchResult
         end
+        Il2cppMemory:ClearSavedResults()
         return searchParams
     end,
 
@@ -98,6 +102,7 @@ Il2cpp = {
     ---@param searchParams table
     ---@return table
     FindObject = function(searchParams)
+        Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
             local searchParam = searchParams[i]
             local classesMemory = Il2cppMemory:GetInfoOfClass(searchParam)
@@ -112,6 +117,7 @@ Il2cpp = {
                 searchParams[i] = Il2cpp.ObjectApi:Find(searchResult)
             end
         end
+        Il2cppMemory:ClearSavedResults()
         return searchParams
     end,
 
@@ -123,6 +129,7 @@ Il2cpp = {
     ---@param searchParams TypeForSearch[] @TypeForSearch = number | string
     ---@return table<number, FieldInfo[] | ErrorSearch>
     FindFields = function(searchParams)
+        Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
             ---@type number | string
             local searchParam = searchParams[i]
@@ -133,6 +140,7 @@ Il2cpp = {
             end
             searchParams[i] = searchResult
         end
+        Il2cppMemory:ClearSavedResults()
         return searchParams
     end,
 
