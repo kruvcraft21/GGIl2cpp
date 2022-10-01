@@ -26,11 +26,12 @@ local StringUtils = {
                 local dumpMethod = {
                     i == 1 and "" or "\n",
                     "\t// Offset: 0x", v.Offset, " VA: 0x", v.AddressInMemory, " ParamCount: ", v.ParamCount, "\n",
-                    "\t", v.ReturnType, " ", v.MethodName, "() { } \n"
+                    "\t", v.IsStatic and "static " or "", v.ReturnType, " ", v.MethodName, "() { } \n"
                 }
                 table.move(dumpMethod, 1, #dumpMethod, #dumpClass + 1, dumpClass)
             end
         end
+        
         table.insert(dumpClass, "\n}\n")
         return table.concat(dumpClass)
     end

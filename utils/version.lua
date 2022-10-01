@@ -85,6 +85,7 @@ local VersionEngine = {
             end
             
         end
+        ---@type Il2cppApi
         local api = assert(Il2cppApi[version], 'Not support this il2cpp version')
         Il2cpp.FieldApi.Offset = api.FieldApiOffset
         Il2cpp.FieldApi.Type = api.FieldApiType
@@ -109,6 +110,7 @@ local VersionEngine = {
         Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
         Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
         Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
+        Il2cpp.MethodsApi.Flags = api.MethodsApiFlags
 
         Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
         Il2cpp.GlobalMetadataApi.version = version

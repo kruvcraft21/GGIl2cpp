@@ -6,6 +6,7 @@ local Protect = require("utils.protect")
 ---@field NameOffset number
 ---@field ParamCount number
 ---@field ReturnType number
+---@field Flags number
 local MethodsApi = {
 
 
@@ -77,7 +78,7 @@ local MethodsApi = {
     ---@param _MethodsInfo MethodInfo[]
     DecodeMethodsInfo = function(self, _MethodsInfo, MethodsInfo)
         for i = 1, #_MethodsInfo do
-            local index = (i - 1) * 5
+            local index = (i - 1) * 6
             local TypeInfo = Il2cpp.FixValue(MethodsInfo[index + 5].value)
             local _TypeInfo = gg.getValues({{ -- type index
                 address = TypeInfo + Il2cpp.TypeApi.Type,
@@ -96,7 +97,8 @@ local MethodsApi = {
                 ClassName = _MethodsInfo[i].ClassName or Il2cpp.ClassApi:GetClassName(MethodsInfo[index + 3].value),
                 ClassAddress = string.format('%X', Il2cpp.FixValue(MethodsInfo[index + 3].value)),
                 ParamCount = MethodsInfo[index + 4].value,
-                ReturnType = Il2cpp.TypeApi:GetTypeName(_TypeInfo[1].value, _TypeInfo[2].value)
+                ReturnType = Il2cpp.TypeApi:GetTypeName(_TypeInfo[1].value, _TypeInfo[2].value),
+                IsStatic = (MethodsInfo[index + 6].value & 0x10) ~= 0
             }
         end
     end,
@@ -125,6 +127,10 @@ local MethodsApi = {
             { -- Return Type
                 address = MethodInfo.MethodInfoAddress + self.ReturnType,
                 flags = Il2cpp.MainType
+            },
+            { -- Flags
+                address = MethodInfo.MethodInfoAddress + self.Flags,
+                flags = gg.TYPE_WORD
             }
         }, 
         {

@@ -66,6 +66,7 @@ require("il2cpp")
 ---@field ClassAddress string
 ---@field ParamCount number
 ---@field ReturnType string
+---@field IsStatic boolean
 
 
 ---@class Il2cppApi
@@ -90,6 +91,7 @@ require("il2cpp")
 ---@field MethodsApiNameOffset number
 ---@field MethodsApiParamCount number
 ---@field MethodsApiReturnType number
+---@field MethodsApiFlags number
 ---@field typeDefinitionsSize number
 ---@field typeDefinitionsOffset number
 ---@field stringOffset number
