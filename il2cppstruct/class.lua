@@ -1,4 +1,5 @@
 local Protect = require("utils.protect")
+local StringUtils = require("utils.stringutils")
 
 ---@class ClassApi
 ---@field NameOffset number
@@ -152,7 +153,8 @@ local ClassApi = {
             TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle,
             InstanceSize = _ClassInfo[11].value
         }, {
-            __index = Il2cpp.ClassInfoApi
+            __index = Il2cpp.ClassInfoApi,
+            __tostring = StringUtils.ClassInfoToDumpCS
         })
     end,
 
