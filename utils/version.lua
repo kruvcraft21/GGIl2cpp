@@ -1,55 +1,54 @@
+local semver = require("semver.semver")
+
 ---@class VersionEngine
 local VersionEngine = {
+    ConstSemVer = {
+        ['2018_3'] = semver(2018, 3),
+        ['2019_4_21'] = semver(2019, 4, 21),
+        ['2019_4_15'] = semver(2019, 4, 15),
+        ['2019_3_7'] = semver(2019, 3, 7),
+        ['2020_2_4'] = semver(2020, 2, 4),
+        ['2020_2'] = semver(2020, 2),
+        ['2020_1_11'] = semver(2020, 1, 11),
+        ['2021_2'] = semver(2021, 2)   
+    },
     Year = {
-        [2017] = function(p2, p3)
+        [2017] = function(self, unityVersion)
             return 24
         end,
-        [2018] = function(p2, p3)
-            return tonumber(p2) >= 3 and 24.1 or 24
+        ---@param self VersionEngine
+        [2018] = function(self, unityVersion)
+            return (unityVersion > self.ConstSemVer['2018_3'] or unityVersion == self.ConstSemVer['2018_3']) and 24.1 or 24
         end,
-        [2019] = function(p2, p3)
-            p2, p3 = tonumber(p2), tonumber(p3)
+        ---@param self VersionEngine
+        [2019] = function(self, unityVersion)
             local version = 24.2
-            if p2 == 3 then
-                if p3 >= 7 then
-                    version = 24.3
-                end
-            end
-
-            if p2 > 3 then
+            if unityVersion > self.ConstSemVer['2019_4_21'] or unityVersion == self.ConstSemVer['2019_4_21'] then
+                version = 24.5
+            elseif unityVersion > self.ConstSemVer['2019_4_15'] or unityVersion == self.ConstSemVer['2019_4_15'] then
+                version = 24.4
+            elseif unityVersion > self.ConstSemVer['2019_3_7'] or unityVersion == self.ConstSemVer['2019_3_7'] then
                 version = 24.3
             end
-
-            if p2 == 4 then
-                if p3 >= 15 then
-                    version = 24.4
-                end
-                if p3 >= 21 then
-                    version = 24.5
-                end
-            end
             return version
         end,
-        [2020] = function(p2, p3)
-            p2, p3 = tonumber(p2), tonumber(p3)
+        ---@param self VersionEngine
+        [2020] = function(self, unityVersion)
             local version = 24.3
-            if p2 == 1 and p3 >= 11 then
+            if unityVersion > self.ConstSemVer['2020_2_4'] or unityVersion == self.ConstSemVer['2020_2_4'] then
+                version = 27.1
+            elseif unityVersion > self.ConstSemVer['2020_2'] or unityVersion == self.ConstSemVer['2020_2'] then
+                version = 27
+            elseif unityVersion > self.ConstSemVer['2020_1_11'] or unityVersion == self.ConstSemVer['2020_1_11'] then
                 version = 24.4
             end
-
-            if p2 == 2 then
-                version = 27
-            end
-
-            if p2 > 2 or (p2 == 2 and p3 >= 4) then
-                version = 27.1
-            end
             return version
         end,
-        [2021] = function(p2, p3)
-            return tonumber(p2) >= 2 and 29 or 27.2
+        ---@param self VersionEngine
+        [2021] = function(self, unityVersion)
+            return (unityVersion > self.ConstSemVer['2021_2'] or unityVersion == self.ConstSemVer['2021_2']) and 29 or 27.2
         end,
-        [2022] = function(p2, p3)
+        [2022] = function(self, unityVersion)
             return 29
         end,
     },
@@ -58,9 +57,9 @@ local VersionEngine = {
         gg.setRanges(gg.REGION_CODE_APP)
         gg.clearResults()
         gg.searchNumber("32h;30h;0~~0;0~~0;2Eh;0~~0;2Eh;66h::11", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 16)
-        local versionTable = gg.getResults(1)
+        local result = gg.getResultsCount() > 0 and gg.getResults(1)[1].address or 0
         gg.clearResults()
-        return gg.getResultsCount() > 0 and versionTable[1].address or 0
+        return result
     end,
     ReadUnityVersion = function(versionAddress)
         local verisonName = Il2cpp.Utf8ToString(versionAddress)
@@ -77,10 +76,11 @@ local VersionEngine = {
                 version = gg.getValues({{address = globalMetadataHeader + 0x4, flags = gg.TYPE_DWORD}})[1].value
             else
                 local p1, p2, p3 = self.ReadUnityVersion(unityVersionAddress)
-                ---@type number | fun(p2 : string, p3: string):number
-                version = self.Year[tonumber(p1)] or 29
+                local unityVersion = semver(tonumber(p1), tonumber(p2), tonumber(p3))
+                ---@type number | fun(self: VersionEngine, unityVersion: table): number
+                version = self.Year[unityVersion.major] or 29
                 if type(version) == 'function' then
-                    version = version(p2, p3)
+                    version = version(self, unityVersion)
                 end
             end
             
