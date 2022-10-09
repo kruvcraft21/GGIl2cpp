@@ -313,7 +313,7 @@ It is worth noting that any call to the `Il2cpp()` function will reset this syst
 After you have made changes to the module, you can build it, for this you will need to install `nodejs`, `typescript`, `ts-node`, `git`.
 
 ```shell
-git clone https://github.com/kruvcraft21/GGIl2cpp
+git clone https://github.com/kruvcraft21/GGIl2cpp --recurse-submodules
 cd GGIl2cpp
 npm i
 npm start
