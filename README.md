@@ -322,7 +322,7 @@ npm start
 or 
 
 ```shell
-git clone https://github.com/kruvcraft21/GGIl2cpp
+git clone https://github.com/kruvcraft21/GGIl2cpp --recurse-submodules
 cd GGIl2cpp
 ts-node build.ts
 ```
