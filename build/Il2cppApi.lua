@@ -100,7 +100,7 @@ require("il2cpp")
 ---@field Error string
 
 
----@class MethodInfo : MethodInfoRaw
+---@class MethodInfo
 ---@field MethodName string
 ---@field Offset string
 ---@field AddressInMemory string
@@ -109,6 +109,7 @@ require("il2cpp")
 ---@field ClassAddress string
 ---@field ParamCount number
 ---@field ReturnType string
+---@field IsStatic boolean
 
 
 ---@class Il2cppApi
@@ -133,6 +134,7 @@ require("il2cpp")
 ---@field MethodsApiNameOffset number
 ---@field MethodsApiParamCount number
 ---@field MethodsApiReturnType number
+---@field MethodsApiFlags number
 ---@field typeDefinitionsSize number
 ---@field typeDefinitionsOffset number
 ---@field stringOffset number
@@ -150,6 +152,14 @@ require("il2cpp")
 ---@field MethodsDump boolean
 
 
+---@class Il2cppConfig
+---@field libilcpp table | nil
+---@field globalMetadata table | nil
+---@field il2cppVersion number | nil
+---@field globalMetadataHeader number | nil
+---@field metadataRegistration number | nil
+
+
 ---@class Il2CppTypeDefinitionApi
 ---@field fieldStart number
 
@@ -160,6 +170,7 @@ local Il2cppMemory = require("utils.il2cppmemory")
 local VersionEngine = require("utils.version")
 local AndroidInfo = require("utils.androidinfo")
 local Searcher = require("utils.universalsearcher")
+local PatchApi = require("utils.patchapi")
 
 
 
@@ -194,16 +205,20 @@ Il2cpp = {
     --- `Il2cpp.PatchesAddress(0x100, "\x20\x00\x80\x52\xc0\x03\x5f\xd6")`
     ---@param add number
     ---@param Bytescodes string
+    ---@return Patch
     PatchesAddress = function(add, Bytescodes)
-        local patch = {}
+        local patchCode = {}
         for code in string.gmatch(Bytescodes, '.') do
-            patch[#patch + 1] = {
-                address = add + #patch,
+            patchCode[#patchCode + 1] = {
+                address = add + #patchCode,
                 value = string.byte(code),
                 flags = gg.TYPE_BYTE
             }
         end
-        gg.setValues(patch)
+        ---@type Patch
+        local patch = PatchApi:Create(patchCode)
+        patch:Patch()
+        return patch
     end,
 
 
@@ -214,6 +229,7 @@ Il2cpp = {
     ---@param searchParams TypeForSearch[] @TypeForSearch = number | string
     ---@return table<number, MethodInfo[] | ErrorSearch>
     FindMethods = function(searchParams)
+        Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
             ---@type number | string
             local searchParam = searchParams[i]
@@ -224,6 +240,7 @@ Il2cpp = {
             end
             searchParams[i] = searchResult
         end
+        Il2cppMemory:ClearSavedResults()
         return searchParams
     end,
 
@@ -234,6 +251,7 @@ Il2cpp = {
     ---@param searchParams ClassConfig[]
     ---@return table<number, ClassInfo[] | ErrorSearch>
     FindClass = function(searchParams)
+        Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
             ---@type ClassConfig
             local searchParam = searchParams[i]
@@ -244,6 +262,7 @@ Il2cpp = {
             end
             searchParams[i] = searchResult
         end
+        Il2cppMemory:ClearSavedResults()
         return searchParams
     end,
 
@@ -256,6 +275,7 @@ Il2cpp = {
     ---@param searchParams table
     ---@return table
     FindObject = function(searchParams)
+        Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
             local searchParam = searchParams[i]
             local classesMemory = Il2cppMemory:GetInfoOfClass(searchParam)
@@ -270,6 +290,7 @@ Il2cpp = {
                 searchParams[i] = Il2cpp.ObjectApi:Find(searchResult)
             end
         end
+        Il2cppMemory:ClearSavedResults()
         return searchParams
     end,
 
@@ -281,6 +302,7 @@ Il2cpp = {
     ---@param searchParams TypeForSearch[] @TypeForSearch = number | string
     ---@return table<number, FieldInfo[] | ErrorSearch>
     FindFields = function(searchParams)
+        Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
             ---@type number | string
             local searchParam = searchParams[i]
@@ -291,6 +313,7 @@ Il2cpp = {
             end
             searchParams[i] = searchResult
         end
+        Il2cppMemory:ClearSavedResults()
         return searchParams
     end,
 
@@ -363,38 +386,31 @@ Il2cpp = {
 
 Il2cpp = setmetatable(Il2cpp, {
     ---@param self Il2cpp
-    ---@param config table
-    -- libilcpp, globalMetadata, il2cppVersion, globalMetadataHeader, metadataRegistration
+    ---@param config? Il2cppConfig
     __call = function(self, config)
-        local configIsnotNil = config and true
+        config = config or {}
 
-        if configIsnotNil and config.libilcpp then
+        if config.libilcpp then
             self.il2cppStart, self.il2cppEnd = config.libilcpp.start, config.libilcpp['end']
         else
             self.il2cppStart, self.il2cppEnd = Searcher.FindIl2cpp()
         end
 
-        if configIsnotNil and config.globalMetadata then
+        if config.globalMetadata then
             self.globalMetadataStart, self.globalMetadataEnd = config.globalMetadata.start, config.globalMetadata['end']
         else
             self.globalMetadataStart, self.globalMetadataEnd = Searcher:FindGlobalMetaData()
         end
 
-        if configIsnotNil and config.globalMetadataHeader then
+        if config.globalMetadataHeader then
             self.globalMetadataHeader = config.globalMetadataHeader
         else
             self.globalMetadataHeader = self.globalMetadataStart
         end
         
-        if configIsnotNil then
-            self.MetadataRegistrationApi.metadataRegistration = config.metadataRegistration
-        end
+        self.MetadataRegistrationApi.metadataRegistration = config.metadataRegistration
 
-        if configIsnotNil then
-            VersionEngine:ChooseVersion(config.il2cppVersion, self.globalMetadataHeader)
-        else
-            VersionEngine:ChooseVersion(nil, self.globalMetadataHeader)
-        end
+        VersionEngine:ChooseVersion(config.il2cppVersion, self.globalMetadataHeader)
 
         Il2cppMemory:ClearMemorize()
     end
@@ -435,6 +451,7 @@ __bundle_register("utils.il2cppmemory", function(require, _LOADED, __bundle_regi
 ---@field Methods table<number | string, MethodInfo[] | ErrorSearch>
 ---@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
 ---@field Fields table<number | string, FieldInfo[] | ErrorSearch>
+---@field Results table
 ---@field DefaultValues table<number, string | number>
 ---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
 ---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
@@ -443,11 +460,28 @@ __bundle_register("utils.il2cppmemory", function(require, _LOADED, __bundle_regi
 ---@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
 ---@field GetInformaionOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
 ---@field SetInformaionOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
+---@field SaveResults fun(self : Il2cppMemory) : void
+---@field ClearSavedResults fun(self : Il2cppMemory) : void
 local Il2cppMemory = {
     Methods = {},
     Classes = {},
     Fields = {},
     DefaultValues = {},
+    Results = {},
+
+
+    ---@param self Il2cppMemory
+    SaveResults = function(self)
+        if gg.getResultsCount() > 0 then
+            self.Results = gg.getResults(gg.getResultsCount())
+        end
+    end,
+
+
+    ---@param self Il2cppMemory
+    ClearSavedResults = function(self)
+        self.Results = {}
+    end,
 
 
     ---@param self Il2cppMemory
@@ -526,6 +560,7 @@ local Il2cppMemory = {
         self.Classes = {}
         self.Fields = {}
         self.DefaultValues = {}
+        self.Results = {}
     end
 }
 
@@ -779,6 +814,7 @@ return AndroidInfo
 end)
 __bundle_register("il2cppstruct.class", function(require, _LOADED, __bundle_register, __bundle_modules)
 local Protect = require("utils.protect")
+local StringUtils = require("utils.stringutils")
 
 ---@class ClassApi
 ---@field NameOffset number
@@ -932,7 +968,8 @@ local ClassApi = {
             TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle,
             InstanceSize = _ClassInfo[11].value
         }, {
-            __index = Il2cpp.ClassInfoApi
+            __index = Il2cpp.ClassInfoApi,
+            __tostring = StringUtils.ClassInfoToDumpCS
         })
     end,
 
@@ -1021,6 +1058,48 @@ local ClassApi = {
 }
 
 return ClassApi
+end)
+__bundle_register("utils.stringutils", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@class StringUtils
+local StringUtils = {
+
+    ---@param classInfo ClassInfo
+    ClassInfoToDumpCS = function(classInfo)
+        local dumpClass = {
+            "// Namespace: ", classInfo.ClassNameSpace, "\n";
+
+            "class ", classInfo.ClassName, classInfo.Parent and " : " .. classInfo.Parent.ClassName or "", "\n", 
+            "{\n"
+        }
+
+        if classInfo.Fields and #classInfo.Fields > 0 then
+            dumpClass[#dumpClass + 1] = "\n\t// Fields\n"
+            for i, v in ipairs(classInfo.Fields) do
+                local dumpField = {
+                    "\t", v.IsStatic and "static " or "", v.IsConst and "const " or "", v.Type, " ", v.FieldName, "; // 0x", v.Offset, "\n"
+                }
+                table.move(dumpField, 1, #dumpField, #dumpClass + 1, dumpClass)
+            end
+        end
+
+        if classInfo.Methods and #classInfo.Methods > 0 then
+            dumpClass[#dumpClass + 1] = "\n\t// Methods\n"
+            for i, v in ipairs(classInfo.Methods) do
+                local dumpMethod = {
+                    i == 1 and "" or "\n",
+                    "\t// Offset: 0x", v.Offset, " VA: 0x", v.AddressInMemory, " ParamCount: ", v.ParamCount, "\n",
+                    "\t", v.IsStatic and "static " or "", v.ReturnType, " ", v.MethodName, "() { } \n"
+                }
+                table.move(dumpMethod, 1, #dumpMethod, #dumpClass + 1, dumpClass)
+            end
+        end
+        
+        table.insert(dumpClass, "\n}\n")
+        return table.concat(dumpClass)
+    end
+}
+
+return StringUtils
 end)
 __bundle_register("utils.protect", function(require, _LOADED, __bundle_register, __bundle_modules)
 local Protect = {
@@ -1437,6 +1516,7 @@ local Protect = require("utils.protect")
 ---@field NameOffset number
 ---@field ParamCount number
 ---@field ReturnType number
+---@field Flags number
 local MethodsApi = {
 
 
@@ -1508,7 +1588,7 @@ local MethodsApi = {
     ---@param _MethodsInfo MethodInfo[]
     DecodeMethodsInfo = function(self, _MethodsInfo, MethodsInfo)
         for i = 1, #_MethodsInfo do
-            local index = (i - 1) * 5
+            local index = (i - 1) * 6
             local TypeInfo = Il2cpp.FixValue(MethodsInfo[index + 5].value)
             local _TypeInfo = gg.getValues({{ -- type index
                 address = TypeInfo + Il2cpp.TypeApi.Type,
@@ -1527,7 +1607,8 @@ local MethodsApi = {
                 ClassName = _MethodsInfo[i].ClassName or Il2cpp.ClassApi:GetClassName(MethodsInfo[index + 3].value),
                 ClassAddress = string.format('%X', Il2cpp.FixValue(MethodsInfo[index + 3].value)),
                 ParamCount = MethodsInfo[index + 4].value,
-                ReturnType = Il2cpp.TypeApi:GetTypeName(_TypeInfo[1].value, _TypeInfo[2].value)
+                ReturnType = Il2cpp.TypeApi:GetTypeName(_TypeInfo[1].value, _TypeInfo[2].value),
+                IsStatic = (MethodsInfo[index + 6].value & 0x10) ~= 0
             }
         end
     end,
@@ -1556,6 +1637,10 @@ local MethodsApi = {
             { -- Return Type
                 address = MethodInfo.MethodInfoAddress + self.ReturnType,
                 flags = Il2cpp.MainType
+            },
+            { -- Flags
+                address = MethodInfo.MethodInfoAddress + self.Flags,
+                flags = gg.TYPE_WORD
             }
         }, 
         {
@@ -1825,59 +1910,96 @@ local Searcher = {
 return Searcher
 
 end)
+__bundle_register("utils.patchapi", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@class Patch
+---@field oldBytes table
+---@field newBytes table
+---@field Create fun(self : Patch, patchCode : table) : Patch
+---@field Patch fun(self : Patch) : void
+---@field Undo fun(self : Patch) : void
+local PatchApi = {
+
+    ---@param self Patch
+    ---@param patchCode table
+    Create = function(self, patchCode)
+        return setmetatable({
+            newBytes = patchCode,
+            oldBytes = gg.getValues(patchCode)
+        },
+        {
+            __index = self,
+        })
+    end,
+    
+    ---@param self Patch
+    Patch = function(self)
+        if self.newBytes then
+            gg.setValues(self.newBytes)
+        end 
+    end,
+
+    ---@param self Patch
+    Undo = function(self)
+        if self.oldBytes then
+            gg.setValues(self.oldBytes)
+        end
+    end,
+}
+
+return PatchApi
+end)
 __bundle_register("utils.version", function(require, _LOADED, __bundle_register, __bundle_modules)
+local semver = require("semver.semver")
+
 ---@class VersionEngine
 local VersionEngine = {
+    ConstSemVer = {
+        ['2018_3'] = semver(2018, 3),
+        ['2019_4_21'] = semver(2019, 4, 21),
+        ['2019_4_15'] = semver(2019, 4, 15),
+        ['2019_3_7'] = semver(2019, 3, 7),
+        ['2020_2_4'] = semver(2020, 2, 4),
+        ['2020_2'] = semver(2020, 2),
+        ['2020_1_11'] = semver(2020, 1, 11),
+        ['2021_2'] = semver(2021, 2)   
+    },
     Year = {
-        [2017] = function(p2, p3)
+        [2017] = function(self, unityVersion)
             return 24
         end,
-        [2018] = function(p2, p3)
-            return tonumber(p2) >= 3 and 24.1 or 24
+        ---@param self VersionEngine
+        [2018] = function(self, unityVersion)
+            return (unityVersion > self.ConstSemVer['2018_3'] or unityVersion == self.ConstSemVer['2018_3']) and 24.1 or 24
         end,
-        [2019] = function(p2, p3)
-            p2, p3 = tonumber(p2), tonumber(p3)
+        ---@param self VersionEngine
+        [2019] = function(self, unityVersion)
             local version = 24.2
-            if p2 == 3 then
-                if p3 >= 7 then
-                    version = 24.3
-                end
-            end
-
-            if p2 > 3 then
+            if unityVersion > self.ConstSemVer['2019_4_21'] or unityVersion == self.ConstSemVer['2019_4_21'] then
+                version = 24.5
+            elseif unityVersion > self.ConstSemVer['2019_4_15'] or unityVersion == self.ConstSemVer['2019_4_15'] then
+                version = 24.4
+            elseif unityVersion > self.ConstSemVer['2019_3_7'] or unityVersion == self.ConstSemVer['2019_3_7'] then
                 version = 24.3
             end
-
-            if p2 == 4 then
-                if p3 >= 15 then
-                    version = 24.4
-                end
-                if p3 >= 21 then
-                    version = 24.5
-                end
-            end
             return version
         end,
-        [2020] = function(p2, p3)
-            p2, p3 = tonumber(p2), tonumber(p3)
+        ---@param self VersionEngine
+        [2020] = function(self, unityVersion)
             local version = 24.3
-            if p2 == 1 and p3 >= 11 then
+            if unityVersion > self.ConstSemVer['2020_2_4'] or unityVersion == self.ConstSemVer['2020_2_4'] then
+                version = 27.1
+            elseif unityVersion > self.ConstSemVer['2020_2'] or unityVersion == self.ConstSemVer['2020_2'] then
+                version = 27
+            elseif unityVersion > self.ConstSemVer['2020_1_11'] or unityVersion == self.ConstSemVer['2020_1_11'] then
                 version = 24.4
             end
-
-            if p2 == 2 then
-                version = 27
-            end
-
-            if p2 > 2 or (p2 == 2 and p3 >= 4) then
-                version = 27.1
-            end
             return version
         end,
-        [2021] = function(p2, p3)
-            return tonumber(p2) >= 2 and 29 or 27.2
+        ---@param self VersionEngine
+        [2021] = function(self, unityVersion)
+            return (unityVersion > self.ConstSemVer['2021_2'] or unityVersion == self.ConstSemVer['2021_2']) and 29 or 27.2
         end,
-        [2022] = function(p2, p3)
+        [2022] = function(self, unityVersion)
             return 29
         end,
     },
@@ -1886,9 +2008,9 @@ local VersionEngine = {
         gg.setRanges(gg.REGION_CODE_APP)
         gg.clearResults()
         gg.searchNumber("32h;30h;0~~0;0~~0;2Eh;0~~0;2Eh;66h::11", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 16)
-        local versionTable = gg.getResults(1)
+        local result = gg.getResultsCount() > 0 and gg.getResults(1)[1].address or 0
         gg.clearResults()
-        return gg.getResultsCount() > 0 and versionTable[1].address or 0
+        return result
     end,
     ReadUnityVersion = function(versionAddress)
         local verisonName = Il2cpp.Utf8ToString(versionAddress)
@@ -1905,14 +2027,16 @@ local VersionEngine = {
                 version = gg.getValues({{address = globalMetadataHeader + 0x4, flags = gg.TYPE_DWORD}})[1].value
             else
                 local p1, p2, p3 = self.ReadUnityVersion(unityVersionAddress)
-                ---@type number | fun(p2 : string, p3: string):number
-                version = self.Year[tonumber(p1)] or 29
+                local unityVersion = semver(tonumber(p1), tonumber(p2), tonumber(p3))
+                ---@type number | fun(self: VersionEngine, unityVersion: table): number
+                version = self.Year[unityVersion.major] or 29
                 if type(version) == 'function' then
-                    version = version(p2, p3)
+                    version = version(self, unityVersion)
                 end
             end
             
         end
+        ---@type Il2cppApi
         local api = assert(Il2cppApi[version], 'Not support this il2cpp version')
         Il2cpp.FieldApi.Offset = api.FieldApiOffset
         Il2cpp.FieldApi.Type = api.FieldApiType
@@ -1937,6 +2061,7 @@ local VersionEngine = {
         Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
         Il2cpp.MethodsApi.ParamCount = api.MethodsApiParamCount
         Il2cpp.MethodsApi.ReturnType = api.MethodsApiReturnType
+        Il2cpp.MethodsApi.Flags = api.MethodsApiFlags
 
         Il2cpp.GlobalMetadataApi.typeDefinitionsSize = api.typeDefinitionsSize
         Il2cpp.GlobalMetadataApi.version = version
@@ -1979,6 +2104,218 @@ local VersionEngine = {
 
 return VersionEngine
 end)
+__bundle_register("semver.semver", function(require, _LOADED, __bundle_register, __bundle_modules)
+local semver = {
+  _VERSION     = '1.2.1',
+  _DESCRIPTION = 'semver for Lua',
+  _URL         = 'https://github.com/kikito/semver.lua',
+  _LICENSE     = [[
+    MIT LICENSE
+
+    Copyright (c) 2015 Enrique García Cota
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of tother software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and tother permission notice shall be included
+    in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  ]]
+}
+
+local function checkPositiveInteger(number, name)
+  assert(number >= 0, name .. ' must be a valid positive number')
+  assert(math.floor(number) == number, name .. ' must be an integer')
+end
+
+local function present(value)
+  return value and value ~= ''
+end
+
+-- splitByDot("a.bbc.d") == {"a", "bbc", "d"}
+local function splitByDot(str)
+  str = str or ""
+  local t, count = {}, 0
+  str:gsub("([^%.]+)", function(c)
+    count = count + 1
+    t[count] = c
+  end)
+  return t
+end
+
+local function parsePrereleaseAndBuildWithSign(str)
+  local prereleaseWithSign, buildWithSign = str:match("^(-[^+]+)(+.+)$")
+  if not (prereleaseWithSign and buildWithSign) then
+    prereleaseWithSign = str:match("^(-.+)$")
+    buildWithSign      = str:match("^(+.+)$")
+  end
+  assert(prereleaseWithSign or buildWithSign, ("The parameter %q must begin with + or - to denote a prerelease or a build"):format(str))
+  return prereleaseWithSign, buildWithSign
+end
+
+local function parsePrerelease(prereleaseWithSign)
+  if prereleaseWithSign then
+    local prerelease = prereleaseWithSign:match("^-(%w[%.%w-]*)$")
+    assert(prerelease, ("The prerelease %q is not a slash followed by alphanumerics, dots and slashes"):format(prereleaseWithSign))
+    return prerelease
+  end
+end
+
+local function parseBuild(buildWithSign)
+  if buildWithSign then
+    local build = buildWithSign:match("^%+(%w[%.%w-]*)$")
+    assert(build, ("The build %q is not a + sign followed by alphanumerics, dots and slashes"):format(buildWithSign))
+    return build
+  end
+end
+
+local function parsePrereleaseAndBuild(str)
+  if not present(str) then return nil, nil end
+
+  local prereleaseWithSign, buildWithSign = parsePrereleaseAndBuildWithSign(str)
+
+  local prerelease = parsePrerelease(prereleaseWithSign)
+  local build = parseBuild(buildWithSign)
+
+  return prerelease, build
+end
+
+local function parseVersion(str)
+  local sMajor, sMinor, sPatch, sPrereleaseAndBuild = str:match("^(%d+)%.?(%d*)%.?(%d*)(.-)$")
+  assert(type(sMajor) == 'string', ("Could not extract version number(s) from %q"):format(str))
+  local major, minor, patch = tonumber(sMajor), tonumber(sMinor), tonumber(sPatch)
+  local prerelease, build = parsePrereleaseAndBuild(sPrereleaseAndBuild)
+  return major, minor, patch, prerelease, build
+end
+
+
+-- return 0 if a == b, -1 if a < b, and 1 if a > b
+local function compare(a,b)
+  return a == b and 0 or a < b and -1 or 1
+end
+
+local function compareIds(myId, otherId)
+  if myId == otherId then return  0
+  elseif not myId    then return -1
+  elseif not otherId then return  1
+  end
+
+  local selfNumber, otherNumber = tonumber(myId), tonumber(otherId)
+
+  if selfNumber and otherNumber then -- numerical comparison
+    return compare(selfNumber, otherNumber)
+  -- numericals are always smaller than alphanums
+  elseif selfNumber then
+    return -1
+  elseif otherNumber then
+    return 1
+  else
+    return compare(myId, otherId) -- alphanumerical comparison
+  end
+end
+
+local function smallerIdList(myIds, otherIds)
+  local myLength = #myIds
+  local comparison
+
+  for i=1, myLength do
+    comparison = compareIds(myIds[i], otherIds[i])
+    if comparison ~= 0 then
+      return comparison == -1
+    end
+    -- if comparison == 0, continue loop
+  end
+
+  return myLength < #otherIds
+end
+
+local function smallerPrerelease(mine, other)
+  if mine == other or not mine then return false
+  elseif not other then return true
+  end
+
+  return smallerIdList(splitByDot(mine), splitByDot(other))
+end
+
+local methods = {}
+
+function methods:nextMajor()
+  return semver(self.major + 1, 0, 0)
+end
+function methods:nextMinor()
+  return semver(self.major, self.minor + 1, 0)
+end
+function methods:nextPatch()
+  return semver(self.major, self.minor, self.patch + 1)
+end
+
+local mt = { __index = methods }
+function mt:__eq(other)
+  return self.major == other.major and
+         self.minor == other.minor and
+         self.patch == other.patch and
+         self.prerelease == other.prerelease
+         -- notice that build is ignored for precedence in semver 2.0.0
+end
+function mt:__lt(other)
+  if self.major ~= other.major then return self.major < other.major end
+  if self.minor ~= other.minor then return self.minor < other.minor end
+  if self.patch ~= other.patch then return self.patch < other.patch end
+  return smallerPrerelease(self.prerelease, other.prerelease)
+  -- notice that build is ignored for precedence in semver 2.0.0
+end
+-- This works like the "pessimisstic operator" in Rubygems.
+-- if a and b are versions, a ^ b means "b is backwards-compatible with a"
+-- in other words, "it's safe to upgrade from a to b"
+function mt:__pow(other)
+  if self.major == 0 then
+    return self == other
+  end
+  return self.major == other.major and
+         self.minor <= other.minor
+end
+function mt:__tostring()
+  local buffer = { ("%d.%d.%d"):format(self.major, self.minor, self.patch) }
+  if self.prerelease then table.insert(buffer, "-" .. self.prerelease) end
+  if self.build      then table.insert(buffer, "+" .. self.build) end
+  return table.concat(buffer)
+end
+
+local function new(major, minor, patch, prerelease, build)
+  assert(major, "At least one parameter is needed")
+
+  if type(major) == 'string' then
+    major,minor,patch,prerelease,build = parseVersion(major)
+  end
+  patch = patch or 0
+  minor = minor or 0
+
+  checkPositiveInteger(major, "major")
+  checkPositiveInteger(minor, "minor")
+  checkPositiveInteger(patch, "patch")
+
+  local result = {major=major, minor=minor, patch=patch, prerelease=prerelease, build=build}
+  return setmetatable(result, mt)
+end
+
+setmetatable(semver, { __call = function(_, ...) return new(...) end })
+semver._VERSION= semver(semver._VERSION)
+
+return semver
+
+end)
 __bundle_register("utils.il2cppconst", function(require, _LOADED, __bundle_register, __bundle_modules)
 local AndroidInfo = require("utils.androidinfo")
 
@@ -2006,6 +2343,7 @@ Il2cppApi = {
         MethodsApiNameOffset = 0x8,
         MethodsApiParamCount = 0x2E,
         MethodsApiReturnType = 0x10,
+        MethodsApiFlags = 0x28,
         typeDefinitionsSize = 0x70,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2038,6 +2376,7 @@ Il2cppApi = {
         MethodsApiNameOffset = 0x8,
         MethodsApiParamCount = 0x2E,
         MethodsApiReturnType = 0x10,
+        MethodsApiFlags = 0x28,
         typeDefinitionsSize = 0x78,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2070,6 +2409,7 @@ Il2cppApi = {
         MethodsApiNameOffset = 0x8,
         MethodsApiParamCount = 0x2E,
         MethodsApiReturnType = 0x10,
+        MethodsApiFlags = 0x28,
         typeDefinitionsSize = 0x78,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2102,6 +2442,7 @@ Il2cppApi = {
         MethodsApiNameOffset = 0x8,
         MethodsApiParamCount = 0x2E,
         MethodsApiReturnType = 0x10,
+        MethodsApiFlags = 0x28,
         typeDefinitionsSize = 104,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2134,6 +2475,7 @@ Il2cppApi = {
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
         MethodsApiReturnType = AndroidInfo.platform and 0x20 or 0x10,
+        MethodsApiFlags = AndroidInfo.platform and 0x44 or 0x24,
         typeDefinitionsSize = 100,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2166,6 +2508,7 @@ Il2cppApi = {
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4E or 0x2E,
         MethodsApiReturnType = AndroidInfo.platform and 0x20 or 0x10,
+        MethodsApiFlags = AndroidInfo.platform and 0x48 or 0x28,
         typeDefinitionsSize = 104,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2198,6 +2541,7 @@ Il2cppApi = {
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
         MethodsApiReturnType = AndroidInfo.platform and 0x20 or 0x10,
+        MethodsApiFlags = AndroidInfo.platform and 0x44 or 0x24,
         typeDefinitionsSize = 92,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2230,6 +2574,7 @@ Il2cppApi = {
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
         MethodsApiReturnType = AndroidInfo.platform and 0x20 or 0x10,
+        MethodsApiFlags = AndroidInfo.platform and 0x44 or 0x24,
         typeDefinitionsSize = 92,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2262,6 +2607,7 @@ Il2cppApi = {
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
         MethodsApiReturnType = AndroidInfo.platform and 0x20 or 0x10,
+        MethodsApiFlags = AndroidInfo.platform and 0x44 or 0x24,
         typeDefinitionsSize = 92,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2294,6 +2640,7 @@ Il2cppApi = {
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
         MethodsApiReturnType = AndroidInfo.platform and 0x20 or 0x10,
+        MethodsApiFlags = AndroidInfo.platform and 0x44 or 0x24,
         typeDefinitionsSize = 92,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2326,6 +2673,7 @@ Il2cppApi = {
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
         MethodsApiReturnType = AndroidInfo.platform and 0x20 or 0x10,
+        MethodsApiFlags = AndroidInfo.platform and 0x44 or 0x24,
         typeDefinitionsSize = 88,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2358,6 +2706,7 @@ Il2cppApi = {
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
         MethodsApiReturnType = AndroidInfo.platform and 0x20 or 0x10,
+        MethodsApiFlags = AndroidInfo.platform and 0x44 or 0x24,
         typeDefinitionsSize = 88,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2390,6 +2739,7 @@ Il2cppApi = {
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
         MethodsApiReturnType = AndroidInfo.platform and 0x20 or 0x10,
+        MethodsApiFlags = AndroidInfo.platform and 0x44 or 0x24,
         typeDefinitionsSize = 88,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
@@ -2422,6 +2772,7 @@ Il2cppApi = {
         MethodsApiNameOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiParamCount = AndroidInfo.platform and 0x52 or 0x2E,
         MethodsApiReturnType = AndroidInfo.platform and 0x28 or 0x14,
+        MethodsApiFlags = AndroidInfo.platform and 0x4C or 0x28,
         typeDefinitionsSize = 88,
         typeDefinitionsOffset = 0xA0,
         stringOffset = 0x18,
