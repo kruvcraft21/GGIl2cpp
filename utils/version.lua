@@ -56,7 +56,7 @@ local VersionEngine = {
     GetUnityVersion = function()
         gg.setRanges(gg.REGION_ANONYMOUS)
         gg.clearResults()
-        gg.searchNumber("00h;32h;30h;0~~0;0~~0;2Eh;0~~0;2Eh::9", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 16)
+        gg.searchNumber("00h;32h;30h;0~~0;0~~0;2Eh;0~~0;2Eh::9", gg.TYPE_BYTE, false, gg.SIGN_EQUAL, nil, nil, 1)
         local result = gg.getResultsCount() > 0 and gg.getResults(3)[3].address or 0
         gg.clearResults()
         return result
