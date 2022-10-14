@@ -11,6 +11,6 @@
   "license": "ISC",
   "dependencies": {
     "@types/node": "^18.6.5",
-    "luabundle": "^1.6.0"
+    "luabundle": "^1.6.1"
   }
 }
