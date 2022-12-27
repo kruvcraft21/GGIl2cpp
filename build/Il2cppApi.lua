@@ -452,6 +452,7 @@ __bundle_register("utils.il2cppmemory", function(require, _LOADED, __bundle_regi
 ---@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
 ---@field Fields table<number | string, FieldInfo[] | ErrorSearch>
 ---@field Results table
+---@field Types table<number, string>
 ---@field DefaultValues table<number, string | number>
 ---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
 ---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
@@ -460,6 +461,8 @@ __bundle_register("utils.il2cppmemory", function(require, _LOADED, __bundle_regi
 ---@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
 ---@field GetInformaionOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
 ---@field SetInformaionOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
+---@field GetInformaionOfType fun(self : Il2cppMemory, index : number) : string | nil
+---@field SetInformaionOfType fun(self : Il2cppMemory, index : number, typeName : string)
 ---@field SaveResults fun(self : Il2cppMemory) : void
 ---@field ClearSavedResults fun(self : Il2cppMemory) : void
 local Il2cppMemory = {
@@ -468,7 +471,20 @@ local Il2cppMemory = {
     Fields = {},
     DefaultValues = {},
     Results = {},
+    Types = {},
 
+
+    ---@param self Il2cppMemory
+    ---@return nil | string
+    GetInformaionOfType = function(self, index)
+        return self.Types[index]
+    end,
+
+
+    ---@param self Il2cppMemory
+    SetInformaionOfType = function(self, index, typeName)
+        self.Types[index] = typeName
+    end,
 
     ---@param self Il2cppMemory
     SaveResults = function(self)
@@ -561,6 +577,7 @@ local Il2cppMemory = {
         self.Fields = {}
         self.DefaultValues = {}
         self.Results = {}
+        self.Types = {}
     end
 }
 
@@ -1699,6 +1716,8 @@ local MethodsApi = {
 return MethodsApi
 end)
 __bundle_register("il2cppstruct.type", function(require, _LOADED, __bundle_register, __bundle_modules)
+local Il2cppMemory = require("utils.il2cppmemory")
+
 ---@class TypeApi
 ---@field Type number
 ---@field tableTypes table
@@ -1767,7 +1786,12 @@ local TypeApi = {
         ---@type string | fun(index : number) : string
         local typeName = self.tableTypes[typeIndex] or "not support type -> 0x" .. string.format('%X', typeIndex)
         if (type(typeName) == 'function') then
-            typeName = typeName(index)
+            local resultType = Il2cppMemory:GetInformaionOfType(index)
+            if not resultType then
+                resultType = typeName(index)
+                Il2cppMemory:SetInformaionOfType(index, resultType)
+            end
+            typeName = resultType
         end
         return typeName
     end,
