@@ -1,3 +1,5 @@
+local Il2cppMemory = require("utils.il2cppmemory")
+
 ---@class TypeApi
 ---@field Type number
 ---@field tableTypes table
@@ -66,7 +68,12 @@ local TypeApi = {
         ---@type string | fun(index : number) : string
         local typeName = self.tableTypes[typeIndex] or "not support type -> 0x" .. string.format('%X', typeIndex)
         if (type(typeName) == 'function') then
-            typeName = typeName(index)
+            local resultType = Il2cppMemory:GetInformaionOfType(index)
+            if not resultType then
+                resultType = typeName(index)
+                Il2cppMemory:SetInformaionOfType(index, resultType)
+            end
+            typeName = resultType
         end
         return typeName
     end,
