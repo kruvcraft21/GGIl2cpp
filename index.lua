@@ -10,7 +10,7 @@ require("il2cpp")
 ---@field ClassAddress string
 ---@field Methods MethodInfo[] | nil
 ---@field Fields FieldInfo[] | nil
----@field Parent table | nil
+---@field Parent ParentClassInfo | nil
 ---@field ClassNameSpace string
 ---@field StaticFieldData number | nil
 ---@field IsEnum boolean
