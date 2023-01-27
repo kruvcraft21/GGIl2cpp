@@ -122,7 +122,7 @@ local MethodsApi = {
             },
             { -- Param Count
                 address = MethodInfo.MethodInfoAddress + self.ParamCount,
-                flags = gg.TYPE_WORD
+                flags = gg.TYPE_BYTE
             },
             { -- Return Type
                 address = MethodInfo.MethodInfoAddress + self.ReturnType,
