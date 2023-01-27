@@ -91,7 +91,7 @@ local MethodsApi = {
             _MethodsInfo[i] = {
                 MethodName = _MethodsInfo[i].MethodName or
                     Il2cpp.Utf8ToString(Il2cpp.FixValue(MethodsInfo[index + 2].value)),
-                Offset = string.format("%X", _MethodsInfo[i].Offset or MethodAddress - Il2cpp.il2cppStart),
+                Offset = string.format("%X", _MethodsInfo[i].Offset or (MethodAddress == 0 and MethodAddress or MethodAddress - Il2cpp.il2cppStart)),
                 AddressInMemory = string.format("%X", MethodAddress),
                 MethodInfoAddress = _MethodsInfo[i].MethodInfoAddress,
                 ClassName = _MethodsInfo[i].ClassName or Il2cpp.ClassApi:GetClassName(MethodsInfo[index + 3].value),
