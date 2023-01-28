@@ -89,7 +89,6 @@ require("il2cpp")
 ---@field ClassApiEnumRsh number
 ---@field ClassApiTypeMetadataHandle number
 ---@field ClassApiInstanceSize number
----@field ClassApiTypeHierarchy number
 ---@field MethodsApiClassOffset number
 ---@field MethodsApiNameOffset number
 ---@field MethodsApiParamCount number
