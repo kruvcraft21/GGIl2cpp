@@ -112,27 +112,27 @@ local MethodsApi = {
     ---@param MethodInfo MethodInfoRaw
     UnpackMethodInfo = function(self, MethodInfo)
         return {
-            { -- Address Method in Memory
+            { -- [1] Address Method in Memory
                 address = MethodInfo.MethodInfoAddress,
                 flags = Il2cpp.MainType
             },
-            { -- Name Address
+            { -- [2] Name Address
                 address = MethodInfo.MethodInfoAddress + self.NameOffset,
                 flags = Il2cpp.MainType
             },
-            { -- Class address
+            { -- [3] Class address
                 address = MethodInfo.MethodInfoAddress + self.ClassOffset,
                 flags = Il2cpp.MainType
             },
-            { -- Param Count
+            { -- [4] Param Count
                 address = MethodInfo.MethodInfoAddress + self.ParamCount,
                 flags = gg.TYPE_BYTE
             },
-            { -- Return Type
+            { -- [5] Return Type
                 address = MethodInfo.MethodInfoAddress + self.ReturnType,
                 flags = Il2cpp.MainType
             },
-            { -- Flags
+            { -- [6] Flags
                 address = MethodInfo.MethodInfoAddress + self.Flags,
                 flags = gg.TYPE_WORD
             }
