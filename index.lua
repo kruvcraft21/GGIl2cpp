@@ -120,4 +120,11 @@ require("il2cpp")
 ---@class Il2CppTypeDefinitionApi
 ---@field fieldStart number
 
+---@class MethodFlags
+---@field Access string[]
+---@field METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK number
+---@field METHOD_ATTRIBUTE_STATIC number
+---@field METHOD_ATTRIBUTE_ABSTRACT number
+
+
 return Il2cpp

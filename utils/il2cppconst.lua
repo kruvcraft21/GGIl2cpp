@@ -465,3 +465,22 @@ Il2CppConst = {
         MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
     }
 }
+
+
+---@class Il2CppFlags
+---@field Method MethodFlags
+Il2CppFlags = {
+    Method = {
+        METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK = 0x0007,
+        Access = {
+            "private", -- METHOD_ATTRIBUTE_PRIVATE
+            "internal", -- METHOD_ATTRIBUTE_FAM_AND_ASSEM
+            "internal", -- METHOD_ATTRIBUTE_ASSEM
+            "protected", -- METHOD_ATTRIBUTE_FAMILY
+            "protected internal", -- METHOD_ATTRIBUTE_FAM_OR_ASSEM
+            "public", -- METHOD_ATTRIBUTE_PUBLIC
+        },
+        METHOD_ATTRIBUTE_STATIC = 0x0010,
+        METHOD_ATTRIBUTE_ABSTRACT = 0x0400,
+    }
+}
