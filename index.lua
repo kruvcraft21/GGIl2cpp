@@ -67,6 +67,8 @@ require("il2cpp")
 ---@field ParamCount number
 ---@field ReturnType string
 ---@field IsStatic boolean
+---@field IsAbstract boolean
+---@field Access string
 
 
 ---@class Il2cppApi

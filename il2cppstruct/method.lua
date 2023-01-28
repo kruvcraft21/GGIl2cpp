@@ -88,6 +88,8 @@ local MethodsApi = {
                 flags = Il2cpp.MainType
             }})
             local MethodAddress = Il2cpp.FixValue(MethodsInfo[index + 1].value)
+            local MethodFlags = MethodsInfo[index + 6].value
+            
             _MethodsInfo[i] = {
                 MethodName = _MethodsInfo[i].MethodName or
                     Il2cpp.Utf8ToString(Il2cpp.FixValue(MethodsInfo[index + 2].value)),
@@ -98,7 +100,9 @@ local MethodsApi = {
                 ClassAddress = string.format('%X', Il2cpp.FixValue(MethodsInfo[index + 3].value)),
                 ParamCount = MethodsInfo[index + 4].value,
                 ReturnType = Il2cpp.TypeApi:GetTypeName(_TypeInfo[1].value, _TypeInfo[2].value),
-                IsStatic = (MethodsInfo[index + 6].value & 0x10) ~= 0
+                IsStatic = (MethodFlags & Il2CppFlags.Method.METHOD_ATTRIBUTE_STATIC) ~= 0,
+                Access = Il2CppConst.Method.Access[MethodFlags & Il2CppFlags.Method.METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK] or "",
+                IsAbstract = (MethodFlags & Il2CppFlags.Method.METHOD_ATTRIBUTE_ABSTRACT) ~= 0,
             }
         end
     end,
