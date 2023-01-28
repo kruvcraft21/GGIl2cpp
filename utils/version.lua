@@ -105,6 +105,7 @@ local VersionEngine = {
         Il2cpp.ClassApi.EnumRsh = api.ClassApiEnumRsh
         Il2cpp.ClassApi.TypeMetadataHandle = api.ClassApiTypeMetadataHandle
         Il2cpp.ClassApi.InstanceSize = api.ClassApiInstanceSize
+        Il2cpp.ClassApi.TypeHierarchy = api.ClassApiTypeHierarchy
 
         Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
         Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset

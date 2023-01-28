@@ -16,6 +16,7 @@ local StringUtils = require("utils.stringutils")
 ---@field EnumRsh number
 ---@field TypeMetadataHandle number
 ---@field InstanceSize number
+---@field TypeHierarchy number
 ---@field GetClassName fun(self : ClassApi, ClassAddress : number) : string
 ---@field GetClassMethods fun(self : ClassApi, MethodsLink : number, Count : number, ClassName : string | nil) : MethodInfo[]
 local ClassApi = {
