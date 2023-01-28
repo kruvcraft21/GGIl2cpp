@@ -1,7 +1,7 @@
 local AndroidInfo = require("utils.androidinfo")
 
 ---@type table<number, Il2cppApi>
-Il2cppApi = {
+Il2CppConst = {
     [20] = {
         FieldApiOffset = 0xC,
         FieldApiType = 0x4,
