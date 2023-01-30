@@ -18,16 +18,16 @@ local VersionEngine = {
         end,
         ---@param self VersionEngine
         [2018] = function(self, unityVersion)
-            return (unityVersion > self.ConstSemVer['2018_3'] or unityVersion == self.ConstSemVer['2018_3']) and 24.1 or 24
+            return (not (unityVersion < self.ConstSemVer['2018_3'])) and 24.1 or 24
         end,
         ---@param self VersionEngine
         [2019] = function(self, unityVersion)
             local version = 24.2
-            if unityVersion > self.ConstSemVer['2019_4_21'] or unityVersion == self.ConstSemVer['2019_4_21'] then
+            if not (unityVersion < self.ConstSemVer['2019_4_21']) then
                 version = 24.5
-            elseif unityVersion > self.ConstSemVer['2019_4_15'] or unityVersion == self.ConstSemVer['2019_4_15'] then
+            elseif not (unityVersion < self.ConstSemVer['2019_4_15']) then
                 version = 24.4
-            elseif unityVersion > self.ConstSemVer['2019_3_7'] or unityVersion == self.ConstSemVer['2019_3_7'] then
+            elseif not (unityVersion < self.ChooseVersion['2019_3_7']) then
                 version = 24.3
             end
             return version
@@ -35,18 +35,18 @@ local VersionEngine = {
         ---@param self VersionEngine
         [2020] = function(self, unityVersion)
             local version = 24.3
-            if unityVersion > self.ConstSemVer['2020_2_4'] or unityVersion == self.ConstSemVer['2020_2_4'] then
+            if not (unityVersion < self.ConstSemVer['2020_2_4']) then
                 version = 27.1
-            elseif unityVersion > self.ConstSemVer['2020_2'] or unityVersion == self.ConstSemVer['2020_2'] then
+            elseif not (unityVersion < self.ConstSemVer['2020_2']) then
                 version = 27
-            elseif unityVersion > self.ConstSemVer['2020_1_11'] or unityVersion == self.ConstSemVer['2020_1_11'] then
+            elseif not (unityVersion < self.ConstSemVer['2020_1_11']) then
                 version = 24.4
             end
             return version
         end,
         ---@param self VersionEngine
         [2021] = function(self, unityVersion)
-            return (unityVersion > self.ConstSemVer['2021_2'] or unityVersion == self.ConstSemVer['2021_2']) and 29 or 27.2
+            return (not (unityVersion < self.ConstSemVer['2021_2'])) and 29 or 27.2 
         end,
         [2022] = function(self, unityVersion)
             return 29
