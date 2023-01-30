@@ -129,4 +129,11 @@ require("il2cpp")
 ---@field METHOD_ATTRIBUTE_ABSTRACT number
 
 
+---@class FieldFlags
+---@field Access string[]
+---@field FIELD_ATTRIBUTE_FIELD_ACCESS_MASK number
+---@field FIELD_ATTRIBUTE_STATIC number
+---@field FIELD_ATTRIBUTE_LITERAL number
+
+
 return Il2cpp
