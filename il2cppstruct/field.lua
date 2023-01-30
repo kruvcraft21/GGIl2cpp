@@ -54,15 +54,19 @@ local FieldApi = {
                 { -- index | data
                     address = TypeInfo,
                     flags = Il2cpp.MainType
-            }})
+                }
+            })
+            local attrs = _TypeInfo[1].value
+            local IsConst = (attrs & Il2CppFlags.Field.FIELD_ATTRIBUTE_LITERAL) ~= 0
             _FieldsInfo[index] = setmetatable({
                 ClassName = ClassCharacteristic.ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[i + 3].value),
                 ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[i + 3].value)),
                 FieldName = Il2cpp.Utf8ToString(Il2cpp.FixValue(FieldsInfo[i].value)),
                 Offset = string.format('%X', FieldsInfo[i + 1].value),
-                IsStatic = (_TypeInfo[1].value & 0x10) ~= 0,
+                IsStatic = (not IsConst) and ((attrs & Il2CppFlags.Field.FIELD_ATTRIBUTE_STATIC) ~= 0),
                 Type = Il2cpp.TypeApi:GetTypeName(_TypeInfo[2].value, _TypeInfo[3].value),
-                IsConst = (_TypeInfo[1].value & 0x40) ~= 0
+                IsConst = IsConst,
+                Access = Il2CppFlags.Field.Access[attrs & Il2CppFlags.Field.FIELD_ATTRIBUTE_FIELD_ACCESS_MASK] or "",
             }, {
                 __index = Il2cpp.FieldInfoApi,
                 fieldIndex = fieldStart + index - 1

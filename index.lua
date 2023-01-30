@@ -42,6 +42,7 @@ require("il2cpp")
 ---@field IsStatic boolean
 ---@field Type string
 ---@field IsConst boolean
+---@field Access string
 ---@field GetConstValue fun(self : FieldInfo) : nil | string | number
 
 

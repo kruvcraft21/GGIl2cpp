@@ -14,7 +14,7 @@ local StringUtils = {
             dumpClass[#dumpClass + 1] = "\n\t// Fields\n"
             for i, v in ipairs(classInfo.Fields) do
                 local dumpField = {
-                    "\t", v.IsStatic and "static " or "", v.IsConst and "const " or "", v.Type, " ", v.FieldName, "; // 0x", v.Offset, "\n"
+                    "\t", v.Access, " ", v.IsStatic and "static " or "", v.IsConst and "const " or "", v.Type, " ", v.FieldName, "; // 0x", v.Offset, "\n"
                 }
                 table.move(dumpField, 1, #dumpField, #dumpClass + 1, dumpClass)
             end
