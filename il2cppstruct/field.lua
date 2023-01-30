@@ -42,15 +42,18 @@ local FieldApi = {
         for i = 1, #FieldsInfo, 4 do
             index = index + 1
             local TypeInfo = Il2cpp.FixValue(FieldsInfo[i + 2].value)
-            local _TypeInfo = gg.getValues({{
-                address = TypeInfo + self.Type,
-                flags = gg.TYPE_WORD
-            }, { -- type index
-                address = TypeInfo + Il2cpp.TypeApi.Type,
-                flags = gg.TYPE_BYTE
-            }, { -- index
-                address = TypeInfo,
-                flags = Il2cpp.MainType
+            local _TypeInfo = gg.getValues({
+                { -- attrs
+                    address = TypeInfo + self.Type,
+                    flags = gg.TYPE_WORD
+                }, 
+                { -- type index | type
+                    address = TypeInfo + Il2cpp.TypeApi.Type,
+                    flags = gg.TYPE_BYTE
+                }, 
+                { -- index | data
+                    address = TypeInfo,
+                    flags = Il2cpp.MainType
             }})
             _FieldsInfo[index] = setmetatable({
                 ClassName = ClassCharacteristic.ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[i + 3].value),

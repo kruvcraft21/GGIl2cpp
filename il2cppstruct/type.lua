@@ -66,7 +66,7 @@ local TypeApi = {
     ---@return string
     GetTypeName = function(self, typeIndex, index)
         ---@type string | fun(index : number) : string
-        local typeName = self.tableTypes[typeIndex] or "not support type -> 0x" .. string.format('%X', typeIndex)
+        local typeName = self.tableTypes[typeIndex] or string.format('(not support type -> 0x%X)', typeIndex)
         if (type(typeName) == 'function') then
             local resultType = Il2cppMemory:GetInformaionOfType(index)
             if not resultType then
