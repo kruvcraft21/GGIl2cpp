@@ -10,12 +10,13 @@ Class for the test:
 using UnityEngine;
 using TMPro;
 using System;
+using ForTwoClass;
 
-public class TestClass : MonoBehaviour
+public class TestClass : TestVirtual
 {
-    public int field1;
-    public float field2;
-    public static int field3;
+    public int Field1;
+    public float Field2;
+    public static int Field3;
     private const int field6 = 679;
     private const float field7 = 23.345f;
     private const string field8 = "Isn't Const";
@@ -23,6 +24,9 @@ public class TestClass : MonoBehaviour
     private const bool field10 = true;
     private const int field11 = -12414;
     private const int field12 = 5;
+    public TestStruct Field13 = new TestStruct(2345, 1234);
+    private ForTwoClass.TestClass field14 = new ForTwoClass.TestClass(1);
+    private TestGenericClass<int> field15 = new TestGenericClass<int>();
 
     private System.Random random = new System.Random(DateTime.UtcNow.GetHashCode());
 
@@ -30,9 +34,9 @@ public class TestClass : MonoBehaviour
     private GameObject[] textFieldsMethods;
     private void Start()
     {
-        field1 = 1;
-        field2 = 2;
-        field3 = 3;
+        Field1 = 1;
+        Field2 = 2;
+        Field3 = 3;
 
         textFields = GameObject.FindGameObjectsWithTag("Field");
         textFieldsMethods = GameObject.FindGameObjectsWithTag("FieldMethod");
@@ -42,12 +46,28 @@ public class TestClass : MonoBehaviour
 
     public int GetField4()
     {
-        return random.Next(0, 30);
+        return random.Next(0, 30) + GetOne() + GetTwo();
+    }
+
+    private static int GetTwo()
+    {
+        return TestClass.field12;
+    }
+
+    public override int GetOne()
+    {
+        return 100;
     }
 
     public int GetField5()
     {
         return (int)TestEnum.var4;
+    }
+
+    public string GetField13()
+    {
+        TestStruct testStruct = this.Field13;
+        return $"[{testStruct.field1}, {testStruct.field2}]";
     }
 
     public void UpdateTextField()
@@ -60,7 +80,7 @@ public class TestClass : MonoBehaviour
         {
             string nameField = textField.name;
             Debug.Log(nameField);
-            textField.GetComponent<TextMeshProUGUI>().text = nameField + " = " + testClass.GetField(nameField.ToLower()).GetValue(this).ToString();
+            textField.GetComponent<TextMeshProUGUI>().text = nameField + " = " + testClass.GetField(nameField).GetValue(this).ToString();
         }
 
         foreach (GameObject textField in textFieldsMethods)
@@ -72,7 +92,7 @@ public class TestClass : MonoBehaviour
     }
 }
 
-public enum TestEnum : int
+public enum TestEnum:int
 {
     var1,
     var2,
@@ -80,6 +100,65 @@ public enum TestEnum : int
     var4,
 }
 
+
+public struct TestStruct
+{
+    public int field1;
+    public float field2;
+    public TestStruct(
+        int Field1,
+        float Field2)
+    {
+        this.field1 = Field1;
+        this.field2 = Field2;
+    }
+}
+
+
+namespace ForTwoClass
+{
+    public class TestClass
+    {
+        private int field1;
+
+        public TestClass(int Field1)
+        {
+            field1 = Field1;
+        }
+    }
+
+    public class TestVirtual : MonoBehaviour
+    {
+        public virtual int GetOne()
+        {
+            return 1;
+        }
+    }
+}
+
+public abstract class TestAbstractClass<T>
+{
+    public abstract T GetValue();
+
+    public abstract void TestAbstractMethod();
+
+    private void SetValue()
+    {
+        return;
+    }
+}
+public class TestGenericClass<T> : TestAbstractClass<T>
+{
+    public override T GetValue()
+    {
+        return default(T);
+    }
+
+    public override void TestAbstractMethod()
+    {
+        return;
+    }
+}
 ```
 
 By pressing the `Update` button, the application updates the text on the screen.
