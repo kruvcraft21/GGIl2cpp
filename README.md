@@ -78,6 +78,9 @@ print(Il2cpp.FindMethods({'Method2', 'Method1'}))
             ['Offset'] = '12AAFFF',
             ['ParamCount'] = 0,
             ['ReturnType'] = 'void',
+            ['IsStatic'] = false,
+            ['IsAbstract'] = false,
+            ['Access'] = 'public',
         },
     },
     [2] = {
@@ -90,6 +93,9 @@ print(Il2cpp.FindMethods({'Method2', 'Method1'}))
             ['Offset'] = '1234FFF',
             ['ParamCount'] = 0,
             ['ReturnType'] = 'int',
+            ['IsStatic'] = false,
+            ['IsAbstract'] = false,
+            ['Access'] = 'public',
         },
     },
 }
@@ -106,6 +112,9 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
             ['ClassName'] = 'MyClass',
             ['ClassNameSpace'] = '',
             ['StaticFieldData'] = , -- some number
+            ['IsEnum'] = false,
+            ['TypeMetadataHandle'] = , -- some number
+            ['InstanceSize'] = 20,
             ['Fields'] = {
                 [ 1] = { -- table(19d60b2)
                     ['ClassName'] = 'MyClass',
@@ -114,6 +123,8 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
                     ['FieldName'] = 'instance',
                     ['Offset'] = '0',
                     ['Type'] = 'MyClass',
+                    ['IsConst'] = false,
+                    ['Access'] = 'private',
                 },
                 [ 2] = { -- table(f249803)
                     ['ClassName'] = 'MyClass',
@@ -122,6 +133,8 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
                     ['FieldName'] = 'field1',
                     ['Offset'] = '4',
                     ['Type'] = 'int',
+                    ['IsConst'] = false,
+                    ['Access'] = 'public',
                 },
                 [ 3] = { -- table(e37d380)
                     ['ClassName'] = 'MyClass',
@@ -130,6 +143,8 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
                     ['FieldName'] = 'field2',
                     ['Offset'] = 'C',
                     ['Type'] = 'string',
+                    ['IsConst'] = false,
+                    ['Access'] = 'public',
                 },
             },
             ['Methods'] = {
@@ -142,6 +157,9 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
                     ['Offset'] = '1234FFF',
                     ['ParamCount'] = 0,
                     ['ReturnType'] = 'int',
+                    ['IsStatic'] = false,
+                    ['IsAbstract'] = false,
+                    ['Access'] = 'public',
                 },
                 [ 2] = { -- table(71212b5)
                     ['AddressInMemory'] = '512AAFFF',
@@ -152,6 +170,9 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
                     ['Offset'] = '12AAFFF',
                     ['ParamCount'] = 0,
                     ['ReturnType'] = 'void',
+                    ['IsStatic'] = false,
+                    ['IsAbstract'] = false,
+                    ['Access'] = 'public',
                 },
                 [ 3] = { -- table(71212b5)
                     ['AddressInMemory'] = '512A1435',
@@ -162,6 +183,9 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
                     ['Offset'] = '12A1435',
                     ['ParamCount'] = 0,
                     ['ReturnType'] = 'void',
+                    ['IsStatic'] = false,
+                    ['IsAbstract'] = false,
+                    ['Access'] = 'public',
                 },
             },
         }
@@ -211,6 +235,8 @@ print(Il2cpp.FindFields({'field1'}))
             ['IsConst'] = false,
             ['IsStatic'] = false,
             ['Type'] = 'int',
+            ['IsConst'] = false,
+            ['Access'] = 'public',
         },
     },
 }
@@ -324,5 +350,6 @@ or
 ```shell
 git clone https://github.com/kruvcraft21/GGIl2cpp --recurse-submodules
 cd GGIl2cpp
+npm i
 ts-node build.ts
 ```
