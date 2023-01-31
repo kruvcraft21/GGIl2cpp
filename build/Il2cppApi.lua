@@ -53,7 +53,7 @@ require("il2cpp")
 ---@field ClassAddress string
 ---@field Methods MethodInfo[] | nil
 ---@field Fields FieldInfo[] | nil
----@field Parent table | nil
+---@field Parent ParentClassInfo | nil
 ---@field ClassNameSpace string
 ---@field StaticFieldData number | nil
 ---@field IsEnum boolean
@@ -85,6 +85,7 @@ require("il2cpp")
 ---@field IsStatic boolean
 ---@field Type string
 ---@field IsConst boolean
+---@field Access string
 ---@field GetConstValue fun(self : FieldInfo) : nil | string | number
 
 
@@ -110,6 +111,8 @@ require("il2cpp")
 ---@field ParamCount number
 ---@field ReturnType string
 ---@field IsStatic boolean
+---@field IsAbstract boolean
+---@field Access string
 
 
 ---@class Il2cppApi
@@ -162,6 +165,20 @@ require("il2cpp")
 
 ---@class Il2CppTypeDefinitionApi
 ---@field fieldStart number
+
+---@class MethodFlags
+---@field Access string[]
+---@field METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK number
+---@field METHOD_ATTRIBUTE_STATIC number
+---@field METHOD_ATTRIBUTE_ABSTRACT number
+
+
+---@class FieldFlags
+---@field Access string[]
+---@field FIELD_ATTRIBUTE_FIELD_ACCESS_MASK number
+---@field FIELD_ATTRIBUTE_STATIC number
+---@field FIELD_ATTRIBUTE_LITERAL number
+
 
 return Il2cpp
 end)
@@ -1093,7 +1110,7 @@ local StringUtils = {
             dumpClass[#dumpClass + 1] = "\n\t// Fields\n"
             for i, v in ipairs(classInfo.Fields) do
                 local dumpField = {
-                    "\t", v.IsStatic and "static " or "", v.IsConst and "const " or "", v.Type, " ", v.FieldName, "; // 0x", v.Offset, "\n"
+                    "\t", v.Access, " ", v.IsStatic and "static " or "", v.IsConst and "const " or "", v.Type, " ", v.FieldName, "; // 0x", v.Offset, "\n"
                 }
                 table.move(dumpField, 1, #dumpField, #dumpClass + 1, dumpClass)
             end
@@ -1105,7 +1122,7 @@ local StringUtils = {
                 local dumpMethod = {
                     i == 1 and "" or "\n",
                     "\t// Offset: 0x", v.Offset, " VA: 0x", v.AddressInMemory, " ParamCount: ", v.ParamCount, "\n",
-                    "\t", v.IsStatic and "static " or "", v.ReturnType, " ", v.MethodName, "() { } \n"
+                    "\t", v.Access, " ",  v.IsStatic and "static " or "", v.IsAbstract and "abstract " or "", v.ReturnType, " ", v.MethodName, "() { } \n"
                 }
                 table.move(dumpMethod, 1, #dumpMethod, #dumpClass + 1, dumpClass)
             end
@@ -1175,24 +1192,31 @@ local FieldApi = {
         for i = 1, #FieldsInfo, 4 do
             index = index + 1
             local TypeInfo = Il2cpp.FixValue(FieldsInfo[i + 2].value)
-            local _TypeInfo = gg.getValues({{
-                address = TypeInfo + self.Type,
-                flags = gg.TYPE_WORD
-            }, { -- type index
-                address = TypeInfo + Il2cpp.TypeApi.Type,
-                flags = gg.TYPE_BYTE
-            }, { -- index
-                address = TypeInfo,
-                flags = Il2cpp.MainType
-            }})
+            local _TypeInfo = gg.getValues({
+                { -- attrs
+                    address = TypeInfo + self.Type,
+                    flags = gg.TYPE_WORD
+                }, 
+                { -- type index | type
+                    address = TypeInfo + Il2cpp.TypeApi.Type,
+                    flags = gg.TYPE_BYTE
+                }, 
+                { -- index | data
+                    address = TypeInfo,
+                    flags = Il2cpp.MainType
+                }
+            })
+            local attrs = _TypeInfo[1].value
+            local IsConst = (attrs & Il2CppFlags.Field.FIELD_ATTRIBUTE_LITERAL) ~= 0
             _FieldsInfo[index] = setmetatable({
                 ClassName = ClassCharacteristic.ClassName or Il2cpp.ClassApi:GetClassName(FieldsInfo[i + 3].value),
                 ClassAddress = string.format('%X', Il2cpp.FixValue(FieldsInfo[i + 3].value)),
                 FieldName = Il2cpp.Utf8ToString(Il2cpp.FixValue(FieldsInfo[i].value)),
                 Offset = string.format('%X', FieldsInfo[i + 1].value),
-                IsStatic = (_TypeInfo[1].value & 0x10) ~= 0,
+                IsStatic = (not IsConst) and ((attrs & Il2CppFlags.Field.FIELD_ATTRIBUTE_STATIC) ~= 0),
                 Type = Il2cpp.TypeApi:GetTypeName(_TypeInfo[2].value, _TypeInfo[3].value),
-                IsConst = (_TypeInfo[1].value & 0x40) ~= 0
+                IsConst = IsConst,
+                Access = Il2CppFlags.Field.Access[attrs & Il2CppFlags.Field.FIELD_ATTRIBUTE_FIELD_ACCESS_MASK] or "",
             }, {
                 __index = Il2cpp.FieldInfoApi,
                 fieldIndex = fieldStart + index - 1
@@ -1615,17 +1639,21 @@ local MethodsApi = {
                 flags = Il2cpp.MainType
             }})
             local MethodAddress = Il2cpp.FixValue(MethodsInfo[index + 1].value)
+            local MethodFlags = MethodsInfo[index + 6].value
+
             _MethodsInfo[i] = {
                 MethodName = _MethodsInfo[i].MethodName or
                     Il2cpp.Utf8ToString(Il2cpp.FixValue(MethodsInfo[index + 2].value)),
-                Offset = string.format("%X", _MethodsInfo[i].Offset or MethodAddress - Il2cpp.il2cppStart),
+                Offset = string.format("%X", _MethodsInfo[i].Offset or (MethodAddress == 0 and MethodAddress or MethodAddress - Il2cpp.il2cppStart)),
                 AddressInMemory = string.format("%X", MethodAddress),
                 MethodInfoAddress = _MethodsInfo[i].MethodInfoAddress,
                 ClassName = _MethodsInfo[i].ClassName or Il2cpp.ClassApi:GetClassName(MethodsInfo[index + 3].value),
                 ClassAddress = string.format('%X', Il2cpp.FixValue(MethodsInfo[index + 3].value)),
                 ParamCount = MethodsInfo[index + 4].value,
                 ReturnType = Il2cpp.TypeApi:GetTypeName(_TypeInfo[1].value, _TypeInfo[2].value),
-                IsStatic = (MethodsInfo[index + 6].value & 0x10) ~= 0
+                IsStatic = (MethodFlags & Il2CppFlags.Method.METHOD_ATTRIBUTE_STATIC) ~= 0,
+                Access = Il2CppFlags.Method.Access[MethodFlags & Il2CppFlags.Method.METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK] or "",
+                IsAbstract = (MethodFlags & Il2CppFlags.Method.METHOD_ATTRIBUTE_ABSTRACT) ~= 0,
             }
         end
     end,
@@ -1635,27 +1663,27 @@ local MethodsApi = {
     ---@param MethodInfo MethodInfoRaw
     UnpackMethodInfo = function(self, MethodInfo)
         return {
-            { -- Address Method in Memory
+            { -- [1] Address Method in Memory
                 address = MethodInfo.MethodInfoAddress,
                 flags = Il2cpp.MainType
             },
-            { -- Name Address
+            { -- [2] Name Address
                 address = MethodInfo.MethodInfoAddress + self.NameOffset,
                 flags = Il2cpp.MainType
             },
-            { -- Class address
+            { -- [3] Class address
                 address = MethodInfo.MethodInfoAddress + self.ClassOffset,
                 flags = Il2cpp.MainType
             },
-            { -- Param Count
+            { -- [4] Param Count
                 address = MethodInfo.MethodInfoAddress + self.ParamCount,
-                flags = gg.TYPE_WORD
+                flags = gg.TYPE_BYTE
             },
-            { -- Return Type
+            { -- [5] Return Type
                 address = MethodInfo.MethodInfoAddress + self.ReturnType,
                 flags = Il2cpp.MainType
             },
-            { -- Flags
+            { -- [6] Flags
                 address = MethodInfo.MethodInfoAddress + self.Flags,
                 flags = gg.TYPE_WORD
             }
@@ -1784,7 +1812,7 @@ local TypeApi = {
     ---@return string
     GetTypeName = function(self, typeIndex, index)
         ---@type string | fun(index : number) : string
-        local typeName = self.tableTypes[typeIndex] or "not support type -> 0x" .. string.format('%X', typeIndex)
+        local typeName = self.tableTypes[typeIndex] or string.format('(not support type -> 0x%X)', typeIndex)
         if (type(typeName) == 'function') then
             local resultType = Il2cppMemory:GetInformaionOfType(index)
             if not resultType then
@@ -1993,16 +2021,16 @@ local VersionEngine = {
         end,
         ---@param self VersionEngine
         [2018] = function(self, unityVersion)
-            return (unityVersion > self.ConstSemVer['2018_3'] or unityVersion == self.ConstSemVer['2018_3']) and 24.1 or 24
+            return (not (unityVersion < self.ConstSemVer['2018_3'])) and 24.1 or 24
         end,
         ---@param self VersionEngine
         [2019] = function(self, unityVersion)
             local version = 24.2
-            if unityVersion > self.ConstSemVer['2019_4_21'] or unityVersion == self.ConstSemVer['2019_4_21'] then
+            if not (unityVersion < self.ConstSemVer['2019_4_21']) then
                 version = 24.5
-            elseif unityVersion > self.ConstSemVer['2019_4_15'] or unityVersion == self.ConstSemVer['2019_4_15'] then
+            elseif not (unityVersion < self.ConstSemVer['2019_4_15']) then
                 version = 24.4
-            elseif unityVersion > self.ConstSemVer['2019_3_7'] or unityVersion == self.ConstSemVer['2019_3_7'] then
+            elseif not (unityVersion < self.ChooseVersion['2019_3_7']) then
                 version = 24.3
             end
             return version
@@ -2010,18 +2038,18 @@ local VersionEngine = {
         ---@param self VersionEngine
         [2020] = function(self, unityVersion)
             local version = 24.3
-            if unityVersion > self.ConstSemVer['2020_2_4'] or unityVersion == self.ConstSemVer['2020_2_4'] then
+            if not (unityVersion < self.ConstSemVer['2020_2_4']) then
                 version = 27.1
-            elseif unityVersion > self.ConstSemVer['2020_2'] or unityVersion == self.ConstSemVer['2020_2'] then
+            elseif not (unityVersion < self.ConstSemVer['2020_2']) then
                 version = 27
-            elseif unityVersion > self.ConstSemVer['2020_1_11'] or unityVersion == self.ConstSemVer['2020_1_11'] then
+            elseif not (unityVersion < self.ConstSemVer['2020_1_11']) then
                 version = 24.4
             end
             return version
         end,
         ---@param self VersionEngine
         [2021] = function(self, unityVersion)
-            return (unityVersion > self.ConstSemVer['2021_2'] or unityVersion == self.ConstSemVer['2021_2']) and 29 or 27.2
+            return (not (unityVersion < self.ConstSemVer['2021_2'])) and 29 or 27.2 
         end,
         [2022] = function(self, unityVersion)
             return 29
@@ -2061,7 +2089,7 @@ local VersionEngine = {
             
         end
         ---@type Il2cppApi
-        local api = assert(Il2cppApi[version], 'Not support this il2cpp version')
+        local api = assert(Il2CppConst[version], 'Not support this il2cpp version')
         Il2cpp.FieldApi.Offset = api.FieldApiOffset
         Il2cpp.FieldApi.Type = api.FieldApiType
         Il2cpp.FieldApi.ClassOffset = api.FieldApiClassOffset
@@ -2344,7 +2372,7 @@ __bundle_register("utils.il2cppconst", function(require, _LOADED, __bundle_regis
 local AndroidInfo = require("utils.androidinfo")
 
 ---@type table<number, Il2cppApi>
-Il2cppApi = {
+Il2CppConst = {
     [20] = {
         FieldApiOffset = 0xC,
         FieldApiType = 0x4,
@@ -2806,6 +2834,39 @@ Il2cppApi = {
         TypeApiType = AndroidInfo.platform and 0xA or 0x6,
         Il2CppTypeDefinitionApifieldStart = 0x20,
         MetadataRegistrationApitypes = AndroidInfo.platform and 0x38 or 0x1C,
+    }
+}
+
+
+---@class Il2CppFlags
+---@field Method MethodFlags
+---@field Field FieldFlags
+Il2CppFlags = {
+    Method = {
+        METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK = 0x0007,
+        Access = {
+            "private", -- METHOD_ATTRIBUTE_PRIVATE
+            "internal", -- METHOD_ATTRIBUTE_FAM_AND_ASSEM
+            "internal", -- METHOD_ATTRIBUTE_ASSEM
+            "protected", -- METHOD_ATTRIBUTE_FAMILY
+            "protected internal", -- METHOD_ATTRIBUTE_FAM_OR_ASSEM
+            "public", -- METHOD_ATTRIBUTE_PUBLIC
+        },
+        METHOD_ATTRIBUTE_STATIC = 0x0010,
+        METHOD_ATTRIBUTE_ABSTRACT = 0x0400,
+    },
+    Field = {
+        FIELD_ATTRIBUTE_FIELD_ACCESS_MASK = 0x0007,
+        Access = {
+            "private", -- FIELD_ATTRIBUTE_PRIVATE
+            "internal", -- FIELD_ATTRIBUTE_FAM_AND_ASSEM
+            "internal", -- FIELD_ATTRIBUTE_ASSEMBLY
+            "protected", -- FIELD_ATTRIBUTE_FAMILY
+            "protected internal", -- FIELD_ATTRIBUTE_FAM_OR_ASSEM
+            "public", -- FIELD_ATTRIBUTE_PUBLIC
+        },
+        FIELD_ATTRIBUTE_STATIC = 0x0010,
+        FIELD_ATTRIBUTE_LITERAL = 0x0040,
     }
 }
 end)
