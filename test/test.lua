@@ -8,8 +8,7 @@ Il2cpp()
 local TestClassConfig = {}
 
 TestClassConfig.Class = "TestClass"
--- TestClassConfig.FieldsDump = true
--- TestClassConfig.MethodsDump = true
+TestClassConfig.FieldsDump = true
 
 local TestClasses = Il2cpp.FindClass({TestClassConfig})[1]
 
@@ -19,22 +18,22 @@ print(TestClasses)
 
 for k,v in ipairs(TestClasses) do
     local TestClassObject = Il2cpp.FindObject({tonumber(v.ClassAddress, 16)})[1]
-    if v.Parent and v.Parent.ClassName ~= "ValueType" then
+    if v.Parent and v.Parent.ClassName ~= "ValueType" and #v.ClassNameSpace == 0 then
         for i = 1, #TestClassObject do
             ChangeTestClasses[#ChangeTestClasses + 1] = {
-                address = TestClassObject[i].address + tonumber(v:GetFieldWithName("field1").Offset, 16),
+                address = TestClassObject[i].address + tonumber(v:GetFieldWithName("Field1").Offset, 16),
                 flags = gg.TYPE_DWORD,
                 value = 40
             }
             ChangeTestClasses[#ChangeTestClasses + 1] = {
-                address = TestClassObject[i].address + tonumber(v:GetFieldWithName("field2").Offset, 16),
+                address = TestClassObject[i].address + tonumber(v:GetFieldWithName("Field2").Offset, 16),
                 flags = gg.TYPE_FLOAT,
                 value = 33
             }
         end
     
         ChangeTestClasses[#ChangeTestClasses + 1] = {
-            address = v.StaticFieldData + tonumber(v:GetFieldWithName("field3").Offset, 16),
+            address = v.StaticFieldData + tonumber(v:GetFieldWithName("Field3").Offset, 16),
             flags = gg.TYPE_DWORD,
             value = 12
         }
