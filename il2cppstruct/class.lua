@@ -158,7 +158,8 @@ local ClassApi = {
         })
     end,
 
-
+    --- Defines not quite accurately, especially in the 29th version of the backend
+    ---@param Address number
     IsClassInfo = function(Address)
         local assembly = Il2cpp.FixValue(gg.getValues({{
             address = Il2cpp.FixValue(Address),
@@ -187,7 +188,7 @@ local ClassApi = {
                 }
             end
         end
-        assert(#ResultTable > 0, 'The "' .. ClassName .. '" class is not initialized')
+        assert(#ResultTable > 0, string.format("The '%s' class is not initialized", ClassName))
         return ResultTable
     end,
 
@@ -200,7 +201,7 @@ local ClassApi = {
                 ClassInfoAddress = ClassAddress
             }
         end
-        assert(#ResultTable > 0, 'nothing was found for this address 0x' .. string.format("%X", ClassAddress))
+        assert(#ResultTable > 0, string.format("nothing was found for this address 0x%X", ClassAddress))
         return ResultTable
     end,
 

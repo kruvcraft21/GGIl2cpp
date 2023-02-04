@@ -27,7 +27,7 @@ local MethodsApi = {
                 }
             end
         end
-        assert(#FinalMethods > 0, 'The "' .. MethodName ..'"" method is not initialized')
+        assert(#FinalMethods > 0, string.format("The '%s' method is not initialized", MethodName))
         return FinalMethods
     end,
 
@@ -37,7 +37,7 @@ local MethodsApi = {
     ---@return MethodInfoRaw[]
     FindMethodWithOffset = function(self, MethodOffset)
         local MethodsInfo = self.FindMethodWithAddressInMemory(Il2cpp.il2cppStart + MethodOffset, MethodOffset)
-        assert(#MethodsInfo > 0, 'nothing was found for this offset 0x' .. string.format("%X", MethodOffset))
+        assert(#MethodsInfo > 0, string.format("nothing was found for this offset 0x%X", MethodOffset))
         return MethodsInfo
     end,
 
@@ -52,7 +52,7 @@ local MethodsApi = {
         gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
                          gg.REGION_OTHER)
         if gg.BUILD < 16126 then
-            gg.searchNumber(string.format("%8.8X", MethodAddress) .. 'h', Il2cpp.MainType)
+            gg.searchNumber(string.format("%Xh", MethodAddress), Il2cpp.MainType)
         else
             gg.loadResults({{
                 address = MethodAddress,
@@ -69,7 +69,7 @@ local MethodsApi = {
                 Offset = MethodOffset
             }
         end
-        assert(#RawMethodsInfo > 0 or MethodOffset, 'nothing was found for this address 0x' .. string.format("%X", MethodAddress))
+        assert(#RawMethodsInfo > 0 or MethodOffset, string.format("nothing was found for this address 0x%X", MethodAddress))
         return RawMethodsInfo
     end,
 

@@ -228,7 +228,7 @@ local GlobalMetadataApi = {
         gg.setRanges(0)
         gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
                          gg.REGION_OTHER | gg.REGION_C_ALLOC)
-        gg.searchNumber("Q 00 '" .. name .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
+        gg.searchNumber(string.format("Q 00 '%s' 00", name), gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
             Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
         gg.searchPointer(0)
         pointers = gg.getResults(gg.getResultsCount())

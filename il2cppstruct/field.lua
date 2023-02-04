@@ -92,7 +92,7 @@ local FieldApi = {
                 table.move(result, 1, #result, #ResultTable + 1, ResultTable)
             end
         end
-        assert(type(ResultTable) == "table" and #ResultTable > 0, 'The "' .. fieldName .. '" field is not initialized')
+        assert(type(ResultTable) == "table" and #ResultTable > 0, string.format("The '%s' field is not initialized", fieldName))
         return ResultTable
     end,
 
@@ -103,7 +103,7 @@ local FieldApi = {
         local fieldOffset = fieldAddress - ObjectHead.address
         local classAddress = Il2cpp.FixValue(ObjectHead.value)
         local ResultTable = self.FindFieldInClass(fieldOffset, classAddress)
-        assert(#ResultTable > 0, 'nothing was found for this address 0x' .. string.format("%X", fieldAddress))
+        assert(#ResultTable > 0, string.format("nothing was found for this address 0x%X", fieldAddress))
         return ResultTable
     end,
 
