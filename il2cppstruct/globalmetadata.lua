@@ -232,7 +232,7 @@ local GlobalMetadataApi = {
             Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
         gg.searchPointer(0)
         pointers = gg.getResults(gg.getResultsCount())
-        assert(type(pointers) == 'table' and #pointers > 0, 'this "' .. name .. '" is not in the global-metadata')
+        assert(type(pointers) == 'table' and #pointers > 0, string.format("this '%s' is not in the global-metadata", name))
         gg.clearResults()
         return pointers
     end
