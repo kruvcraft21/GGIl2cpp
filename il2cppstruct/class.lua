@@ -203,13 +203,34 @@ local ClassApi = {
     ---@return ClassInfoRaw[]
     FindClassWithAddressInMemory = function(self, ClassAddress)
         local ResultTable = {}
-        if self.IsClassInfo(ClassAddress) then
-            ResultTable[#ResultTable + 1] = {
-                ClassInfoAddress = ClassAddress
-            }
-        end
-        assert(#ResultTable > 0, string.format("nothing was found for this address 0x%X", ClassAddress))
+        ResultTable[#ResultTable + 1] = {
+            ClassInfoAddress = ClassAddress
+        }
         return ResultTable
+    end,
+
+
+    ---@param self ClassApi
+    ---@param token number
+    ---@return ClassInfoRaw[]
+    FindClassWithToken = function(self, token)
+        gg.clearResults()
+        gg.setRanges(0)
+        gg.setRanges(gg.REGION_C_ALLOC | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_C_HEAP | gg.REGION_OTHER)
+        gg.searchNumber(tostring(token), gg.TYPE_DWORD)
+        local searchTable = gg.getResults(gg.getResultsCount())
+        gg.clearResults()
+        ---@type ClassInfoRaw[]
+        local resultTable = {}
+        for k, v in ipairs(searchTable) do
+            if self.IsClassInfo(v.address - self.Token) then
+                resultTable[#resultTable + 1] = {
+                    ClassInfoAddress = v.address - self.Token
+                }
+            end
+        end
+        assert(#resultTable > 0, string.format("nothing was found for this 0x%X number", token))
+        return resultTable
     end,
 
 
@@ -217,7 +238,11 @@ local ClassApi = {
         ---@param self ClassApi
         ---@param _class number @Class Address In Memory
         ['number'] = function(self, _class)
-            return Protect:Call(self.FindClassWithAddressInMemory, self, _class)
+            if self.IsClassInfo(_class) then
+                return Protect:Call(self.FindClassWithAddressInMemory, self, _class)
+            else
+                return Protect:Call(self.FindClassWithToken, self, _class)        
+            end
         end,
         ---@param self ClassApi
         ---@param _class string @Class Name
