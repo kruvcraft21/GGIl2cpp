@@ -113,8 +113,8 @@ local Il2cppMemory = {
     SetInformaionOfClass = function(self, searchParam, searchResult)
         self.Classes[searchParam.Class] = {
             Config = {
-                FieldsDump = searchParam.FieldsDump and true or false,
-                MethodsDump = searchParam.MethodsDump and true or false
+                FieldsDump = searchParam.FieldsDump and true,
+                MethodsDump = searchParam.MethodsDump and true
             },
             SearchResult = searchResult
         }
