@@ -82,7 +82,7 @@ local ClassApi = {
     ---@param self ClassApi
     ---@param ClassInfo ClassInfoRaw
     ---@param Config table
-    ---@return table
+    ---@return ClassInfo
     UnpackClassInfo = function(self, ClassInfo, Config)
         local _ClassInfo = gg.getValues({
             { -- Class Name [1]
@@ -167,12 +167,12 @@ local ClassApi = {
     --- Defines not quite accurately, especially in the 29th version of the backend
     ---@param Address number
     IsClassInfo = function(Address)
-        local assembly = Il2cpp.FixValue(gg.getValues({{
+        local image = Il2cpp.FixValue(gg.getValues({{
             address = Il2cpp.FixValue(Address),
             flags = Il2cpp.MainType
         }})[1].value)
         return Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{
-            address = assembly,
+            address = image,
             flags = Il2cpp.MainType
         }})[1].value)):find(".dll") ~= nil
     end,
@@ -200,6 +200,7 @@ local ClassApi = {
 
 
     ---@param self ClassApi
+    ---@return ClassInfoRaw[]
     FindClassWithAddressInMemory = function(self, ClassAddress)
         local ResultTable = {}
         if self.IsClassInfo(ClassAddress) then
@@ -235,6 +236,7 @@ local ClassApi = {
     ---@param class ClassConfig
     ---@return ClassInfo[] | ErrorSearch
     Find = function(self, class)
+        ---@type ClassInfoRaw[] | ErrorSearch
         local ClassInfo =
             (self.FindParamsCheck[type(class.Class)] or self.FindParamsCheck['default'])(self, class.Class)
         if #ClassInfo ~= 0 then
