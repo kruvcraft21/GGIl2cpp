@@ -16,6 +16,7 @@ require("il2cpp")
 ---@field IsEnum boolean
 ---@field TypeMetadataHandle number
 ---@field InstanceSize number
+---@field Token string
 ---@field GetFieldWithName fun(self : ClassInfo, name : string) : FieldInfo | nil @Get FieldInfo by Field Name. If Fields weren't dumped, then this function return `nil`. Also, if Field isn't found by name, then function will return `nil`
 ---@field GetMethodsWithName fun(self : ClassInfo, name : string) : MethodInfo[] | nil @Get MethodInfo[] by MethodName. If Methods weren't dumped, then this function return `nil`. Also, if Method isn't found by name, then function will return `table with zero size`
 ---@field GetFieldWithOffset fun(self : ClassInfo, fieldOffset : number) : FieldInfo | nil

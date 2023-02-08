@@ -16,6 +16,7 @@ local StringUtils = require("utils.stringutils")
 ---@field EnumRsh number
 ---@field TypeMetadataHandle number
 ---@field InstanceSize number
+---@field Token number
 ---@field GetClassName fun(self : ClassApi, ClassAddress : number) : string
 ---@field GetClassMethods fun(self : ClassApi, MethodsLink : number, Count : number, ClassName : string | nil) : MethodInfo[]
 local ClassApi = {
@@ -127,6 +128,10 @@ local ClassApi = {
             { -- InstanceSize [11]
                 address = ClassInfo.ClassInfoAddress + self.InstanceSize,
                 flags = gg.TYPE_DWORD
+            },
+            { -- Token [12]
+                address = ClassInfo.ClassInfoAddress + self.Token,
+                flags = gg.TYPE_DWORD
             }
         })
         local ClassName = ClassInfo.ClassName or Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[1].value))
@@ -151,7 +156,8 @@ local ClassApi = {
             StaticFieldData = _ClassInfo[8].value ~= 0 and Il2cpp.FixValue(_ClassInfo[8].value) or nil,
             IsEnum = ClassCharacteristic.IsEnum,
             TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle,
-            InstanceSize = _ClassInfo[11].value
+            InstanceSize = _ClassInfo[11].value,
+            Token = string.format("0x%X", _ClassInfo[12].value)
         }, {
             __index = Il2cpp.ClassInfoApi,
             __tostring = StringUtils.ClassInfoToDumpCS
