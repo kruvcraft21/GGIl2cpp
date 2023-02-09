@@ -59,6 +59,7 @@ require("il2cpp")
 ---@field IsEnum boolean
 ---@field TypeMetadataHandle number
 ---@field InstanceSize number
+---@field Token string
 ---@field GetFieldWithName fun(self : ClassInfo, name : string) : FieldInfo | nil @Get FieldInfo by Field Name. If Fields weren't dumped, then this function return `nil`. Also, if Field isn't found by name, then function will return `nil`
 ---@field GetMethodsWithName fun(self : ClassInfo, name : string) : MethodInfo[] | nil @Get MethodInfo[] by MethodName. If Methods weren't dumped, then this function return `nil`. Also, if Method isn't found by name, then function will return `table with zero size`
 ---@field GetFieldWithOffset fun(self : ClassInfo, fieldOffset : number) : FieldInfo | nil
@@ -133,6 +134,7 @@ require("il2cpp")
 ---@field ClassApiEnumRsh number
 ---@field ClassApiTypeMetadataHandle number
 ---@field ClassApiInstanceSize number
+---@field ClassApiToken number
 ---@field MethodsApiClassOffset number
 ---@field MethodsApiNameOffset number
 ---@field MethodsApiParamCount number
@@ -578,8 +580,8 @@ local Il2cppMemory = {
     SetInformaionOfClass = function(self, searchParam, searchResult)
         self.Classes[searchParam.Class] = {
             Config = {
-                FieldsDump = searchParam.FieldsDump and true or false,
-                MethodsDump = searchParam.MethodsDump and true or false
+                FieldsDump = searchParam.FieldsDump and true,
+                MethodsDump = searchParam.MethodsDump and true
             },
             SearchResult = searchResult
         }
@@ -865,6 +867,7 @@ local StringUtils = require("utils.stringutils")
 ---@field EnumRsh number
 ---@field TypeMetadataHandle number
 ---@field InstanceSize number
+---@field Token number
 ---@field GetClassName fun(self : ClassApi, ClassAddress : number) : string
 ---@field GetClassMethods fun(self : ClassApi, MethodsLink : number, Count : number, ClassName : string | nil) : MethodInfo[]
 local ClassApi = {
@@ -930,7 +933,7 @@ local ClassApi = {
     ---@param self ClassApi
     ---@param ClassInfo ClassInfoRaw
     ---@param Config table
-    ---@return table
+    ---@return ClassInfo
     UnpackClassInfo = function(self, ClassInfo, Config)
         local _ClassInfo = gg.getValues({
             { -- Class Name [1]
@@ -976,6 +979,10 @@ local ClassApi = {
             { -- InstanceSize [11]
                 address = ClassInfo.ClassInfoAddress + self.InstanceSize,
                 flags = gg.TYPE_DWORD
+            },
+            { -- Token [12]
+                address = ClassInfo.ClassInfoAddress + self.Token,
+                flags = gg.TYPE_DWORD
             }
         })
         local ClassName = ClassInfo.ClassName or Il2cpp.Utf8ToString(Il2cpp.FixValue(_ClassInfo[1].value))
@@ -1000,21 +1007,23 @@ local ClassApi = {
             StaticFieldData = _ClassInfo[8].value ~= 0 and Il2cpp.FixValue(_ClassInfo[8].value) or nil,
             IsEnum = ClassCharacteristic.IsEnum,
             TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle,
-            InstanceSize = _ClassInfo[11].value
+            InstanceSize = _ClassInfo[11].value,
+            Token = string.format("0x%X", _ClassInfo[12].value)
         }, {
             __index = Il2cpp.ClassInfoApi,
             __tostring = StringUtils.ClassInfoToDumpCS
         })
     end,
 
-
+    --- Defines not quite accurately, especially in the 29th version of the backend
+    ---@param Address number
     IsClassInfo = function(Address)
-        local assembly = Il2cpp.FixValue(gg.getValues({{
+        local image = Il2cpp.FixValue(gg.getValues({{
             address = Il2cpp.FixValue(Address),
             flags = Il2cpp.MainType
         }})[1].value)
         return Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{
-            address = assembly,
+            address = image,
             flags = Il2cpp.MainType
         }})[1].value)):find(".dll") ~= nil
     end,
@@ -1036,21 +1045,43 @@ local ClassApi = {
                 }
             end
         end
-        assert(#ResultTable > 0, 'The "' .. ClassName .. '" class is not initialized')
+        assert(#ResultTable > 0, string.format("The '%s' class is not initialized", ClassName))
         return ResultTable
     end,
 
 
     ---@param self ClassApi
+    ---@return ClassInfoRaw[]
     FindClassWithAddressInMemory = function(self, ClassAddress)
         local ResultTable = {}
-        if self.IsClassInfo(ClassAddress) then
-            ResultTable[#ResultTable + 1] = {
-                ClassInfoAddress = ClassAddress
-            }
-        end
-        assert(#ResultTable > 0, 'nothing was found for this address 0x' .. string.format("%X", ClassAddress))
+        ResultTable[#ResultTable + 1] = {
+            ClassInfoAddress = ClassAddress
+        }
         return ResultTable
+    end,
+
+
+    ---@param self ClassApi
+    ---@param token number
+    ---@return ClassInfoRaw[]
+    FindClassWithToken = function(self, token)
+        gg.clearResults()
+        gg.setRanges(0)
+        gg.setRanges(gg.REGION_C_ALLOC | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_C_HEAP | gg.REGION_OTHER)
+        gg.searchNumber(tostring(token), gg.TYPE_DWORD)
+        local searchTable = gg.getResults(gg.getResultsCount())
+        gg.clearResults()
+        ---@type ClassInfoRaw[]
+        local resultTable = {}
+        for k, v in ipairs(searchTable) do
+            if self.IsClassInfo(v.address - self.Token) then
+                resultTable[#resultTable + 1] = {
+                    ClassInfoAddress = v.address - self.Token
+                }
+            end
+        end
+        assert(#resultTable > 0, string.format("nothing was found for this 0x%X number", token))
+        return resultTable
     end,
 
 
@@ -1058,7 +1089,11 @@ local ClassApi = {
         ---@param self ClassApi
         ---@param _class number @Class Address In Memory
         ['number'] = function(self, _class)
-            return Protect:Call(self.FindClassWithAddressInMemory, self, _class)
+            if self.IsClassInfo(_class) then
+                return Protect:Call(self.FindClassWithAddressInMemory, self, _class)
+            else
+                return Protect:Call(self.FindClassWithToken, self, _class)        
+            end
         end,
         ---@param self ClassApi
         ---@param _class string @Class Name
@@ -1077,6 +1112,7 @@ local ClassApi = {
     ---@param class ClassConfig
     ---@return ClassInfo[] | ErrorSearch
     Find = function(self, class)
+        ---@type ClassInfoRaw[] | ErrorSearch
         local ClassInfo =
             (self.FindParamsCheck[type(class.Class)] or self.FindParamsCheck['default'])(self, class.Class)
         if #ClassInfo ~= 0 then
@@ -1242,7 +1278,7 @@ local FieldApi = {
                 table.move(result, 1, #result, #ResultTable + 1, ResultTable)
             end
         end
-        assert(type(ResultTable) == "table" and #ResultTable > 0, 'The "' .. fieldName .. '" field is not initialized')
+        assert(type(ResultTable) == "table" and #ResultTable > 0, string.format("The '%s' field is not initialized", fieldName))
         return ResultTable
     end,
 
@@ -1253,7 +1289,7 @@ local FieldApi = {
         local fieldOffset = fieldAddress - ObjectHead.address
         local classAddress = Il2cpp.FixValue(ObjectHead.value)
         local ResultTable = self.FindFieldInClass(fieldOffset, classAddress)
-        assert(#ResultTable > 0, 'nothing was found for this address 0x' .. string.format("%X", fieldAddress))
+        assert(#ResultTable > 0, string.format("nothing was found for this address 0x%X", fieldAddress))
         return ResultTable
     end,
 
@@ -1536,11 +1572,11 @@ local GlobalMetadataApi = {
         gg.setRanges(0)
         gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_HEAP | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
                          gg.REGION_OTHER | gg.REGION_C_ALLOC)
-        gg.searchNumber("Q 00 '" .. name .. "' 00 ", gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
+        gg.searchNumber(string.format("Q 00 '%s' 00", name), gg.TYPE_BYTE, false, gg.SIGN_EQUAL,
             Il2cpp.globalMetadataStart, Il2cpp.globalMetadataEnd)
         gg.searchPointer(0)
         pointers = gg.getResults(gg.getResultsCount())
-        assert(type(pointers) == 'table' and #pointers > 0, 'this "' .. name .. '" is not in the global-metadata')
+        assert(type(pointers) == 'table' and #pointers > 0, string.format("this '%s' is not in the global-metadata", name))
         gg.clearResults()
         return pointers
     end
@@ -1578,7 +1614,7 @@ local MethodsApi = {
                 }
             end
         end
-        assert(#FinalMethods > 0, 'The "' .. MethodName ..'"" method is not initialized')
+        assert(#FinalMethods > 0, string.format("The '%s' method is not initialized", MethodName))
         return FinalMethods
     end,
 
@@ -1588,7 +1624,7 @@ local MethodsApi = {
     ---@return MethodInfoRaw[]
     FindMethodWithOffset = function(self, MethodOffset)
         local MethodsInfo = self.FindMethodWithAddressInMemory(Il2cpp.il2cppStart + MethodOffset, MethodOffset)
-        assert(#MethodsInfo > 0, 'nothing was found for this offset 0x' .. string.format("%X", MethodOffset))
+        assert(#MethodsInfo > 0, string.format("nothing was found for this offset 0x%X", MethodOffset))
         return MethodsInfo
     end,
 
@@ -1603,7 +1639,7 @@ local MethodsApi = {
         gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
                          gg.REGION_OTHER)
         if gg.BUILD < 16126 then
-            gg.searchNumber(string.format("%8.8X", MethodAddress) .. 'h', Il2cpp.MainType)
+            gg.searchNumber(string.format("%Xh", MethodAddress), Il2cpp.MainType)
         else
             gg.loadResults({{
                 address = MethodAddress,
@@ -1620,7 +1656,7 @@ local MethodsApi = {
                 Offset = MethodOffset
             }
         end
-        assert(#RawMethodsInfo > 0 or MethodOffset, 'nothing was found for this address 0x' .. string.format("%X", MethodAddress))
+        assert(#RawMethodsInfo > 0 or MethodOffset, string.format("nothing was found for this address 0x%X", MethodAddress))
         return RawMethodsInfo
     end,
 
@@ -2108,6 +2144,7 @@ local VersionEngine = {
         Il2cpp.ClassApi.EnumRsh = api.ClassApiEnumRsh
         Il2cpp.ClassApi.TypeMetadataHandle = api.ClassApiTypeMetadataHandle
         Il2cpp.ClassApi.InstanceSize = api.ClassApiInstanceSize
+        Il2cpp.ClassApi.Token = api.ClassApiToken
 
         Il2cpp.MethodsApi.ClassOffset = api.MethodsApiClassOffset
         Il2cpp.MethodsApi.NameOffset = api.MethodsApiNameOffset
@@ -2391,6 +2428,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 2,
         ClassApiTypeMetadataHandle = 0x2C,
         ClassApiInstanceSize = 0x78,
+        ClassApiToken = 0x98,
         MethodsApiClassOffset = 0xC,
         MethodsApiNameOffset = 0x8,
         MethodsApiParamCount = 0x2E,
@@ -2424,6 +2462,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 2,
         ClassApiTypeMetadataHandle = 0x2C,
         ClassApiInstanceSize = 0x78,
+        ClassApiToken = 0x98,
         MethodsApiClassOffset = 0xC,
         MethodsApiNameOffset = 0x8,
         MethodsApiParamCount = 0x2E,
@@ -2457,6 +2496,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 2,
         ClassApiTypeMetadataHandle = 0x2C,
         ClassApiInstanceSize = 0x70,
+        ClassApiToken = 0x90,
         MethodsApiClassOffset = 0xC,
         MethodsApiNameOffset = 0x8,
         MethodsApiParamCount = 0x2E,
@@ -2490,6 +2530,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 2,
         ClassApiTypeMetadataHandle = 0x2C,
         ClassApiInstanceSize = 0x78,
+        ClassApiToken = 0x98,
         MethodsApiClassOffset = 0xC,
         MethodsApiNameOffset = 0x8,
         MethodsApiParamCount = 0x2E,
@@ -2523,6 +2564,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
         ClassApiInstanceSize = AndroidInfo.platform and 0xEC or 0x84,
+        ClassApiToken = AndroidInfo.platform and 0x10c or 0xa4,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -2556,6 +2598,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 2,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
         ClassApiInstanceSize = AndroidInfo.platform and 0xF0 or 0x88,
+        ClassApiToken = AndroidInfo.platform and 0x110 or 0xa8,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4E or 0x2E,
@@ -2589,6 +2632,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
         ClassApiInstanceSize = AndroidInfo.platform and 0xF4 or 0x80,
+        ClassApiToken = AndroidInfo.platform and 0x114 or 0xa0,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -2622,6 +2666,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
         ClassApiInstanceSize = AndroidInfo.platform and 0xF4 or 0x80,
+        ClassApiToken = AndroidInfo.platform and 0x114 or 0xa0,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -2655,6 +2700,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
         ClassApiInstanceSize = AndroidInfo.platform and 0xF4 or 0x80,
+        ClassApiToken = AndroidInfo.platform and 0x114 or 0xa0,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -2688,6 +2734,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
         ClassApiInstanceSize = AndroidInfo.platform and 0xF4 or 0x80,
+        ClassApiToken = AndroidInfo.platform and 0x114 or 0xa0,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -2721,6 +2768,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
         ClassApiInstanceSize = AndroidInfo.platform and 0xF8 or 0x80,
+        ClassApiToken = AndroidInfo.platform and 0x118 or 0xa0,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -2754,6 +2802,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 3,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
         ClassApiInstanceSize = AndroidInfo.platform and 0xF8 or 0x80,
+        ClassApiToken = AndroidInfo.platform and 0x118 or 0xa0,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -2787,6 +2836,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 2,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
         ClassApiInstanceSize = AndroidInfo.platform and 0xF8 or 0x80,
+        ClassApiToken = AndroidInfo.platform and 0x118 or 0xa0,
         MethodsApiClassOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiNameOffset = AndroidInfo.platform and 0x10 or 0x8,
         MethodsApiParamCount = AndroidInfo.platform and 0x4A or 0x2A,
@@ -2820,6 +2870,7 @@ Il2CppConst = {
         ClassApiEnumRsh = 2,
         ClassApiTypeMetadataHandle = AndroidInfo.platform and 0x68 or 0x34,
         ClassApiInstanceSize = AndroidInfo.platform and 0xF8 or 0x80,
+        ClassApiToken = AndroidInfo.platform and 0x118 or 0xa0,
         MethodsApiClassOffset = AndroidInfo.platform and 0x20 or 0x10,
         MethodsApiNameOffset = AndroidInfo.platform and 0x18 or 0xC,
         MethodsApiParamCount = AndroidInfo.platform and 0x52 or 0x2E,
