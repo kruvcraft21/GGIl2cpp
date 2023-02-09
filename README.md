@@ -22,7 +22,7 @@ Il2cpp.FindFields()
 
 * `Il2cpp()` - This function takes one argument, only a table. Without this function, the module will not work correctly.
 * `Il2cpp.FindMethods()` - Searches for a method, or rather information on the method, by name or by offset, you can also send an address in memory to it.
-* `Il2cpp.FindClass()` - Searches for a class, by name, or by address in memory.
+* `Il2cpp.FindClass()` - Searches for a class by name, by memory address, or by token.
 * `Il2cpp.PatchesAddress()` - Patch `Bytescodes` to `add`
 * `Il2cpp.FindObject()` - Searches for an object by name or by class address, in memory. In some cases, the function may return an incorrect result for certain classes. For example, sometimes the garbage collector may not have time to remove an object from memory and then a `fake object` will appear or for a turnover, the object may still be `not implemented` or `not created`.
 * `Il2cpp.FindFields()` - Searches for a field, or rather information about the field, by name or by address in memory.
