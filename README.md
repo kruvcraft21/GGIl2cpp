@@ -115,6 +115,7 @@ print(Il2cpp.FindClass({{Class = 'MyClass', MethodsDump = true, FieldsDump = tru
             ['IsEnum'] = false,
             ['TypeMetadataHandle'] = , -- some number
             ['InstanceSize'] = 20,
+            ['Token'] = '',-- some number in hex
             ['Fields'] = {
                 [ 1] = { -- table(19d60b2)
                     ['ClassName'] = 'MyClass',

@@ -218,15 +218,15 @@ gg.setValues(ChangeTestClasses)
 Result of code execution:
 ```Lua
 Скрипт завершен:
-{ -- table(715f1d9)
-	[1] = { -- table(ade479e)
-		['ClassAddress'] = '6FEC94C0D0',
+{ -- table(6afd241)
+	[1] = { -- table(a3283e6)
+		['ClassAddress'] = '6E08412650',
 		['ClassName'] = 'TestClass',
 		['ClassNameSpace'] = 'ForTwoClass',
-		['Fields'] = { -- table(caad27f)
-			[1] = { -- table(e18824c)
+		['Fields'] = { -- table(5966d27)
+			[1] = { -- table(9788bd4)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC94C0D0',
+				['ClassAddress'] = '6E08412650',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field1',
 				['IsConst'] = false,
@@ -237,18 +237,19 @@ Result of code execution:
 		},
 		['InstanceSize'] = 24,
 		['IsEnum'] = false,
-		['Parent'] = { -- table(aead295)
-			['ClassAddress'] = '6FEC934C10',
+		['Parent'] = { -- table(ce6517d)
+			['ClassAddress'] = '6E083AC050',
 			['ClassName'] = 'Object',
 		},
-		['TypeMetadataHandle'] = 475139499184,
+		['Token'] = '0x2000047',
+		['TypeMetadataHandle'] = 466714879152,
 	},
-	[2] = { -- table(6633faa)
-		['ClassAddress'] = '6FEC96DF50',
+	[2] = { -- table(e92f872)
+		['ClassAddress'] = '6E08414950',
 		['ClassName'] = 'TestClass',
 		['ClassNameSpace'] = '',
-		['Fields'] = { -- table(d24179b)
-			[1] = { -- table(4717738)
+		['Fields'] = { -- table(672b4c3)
+			[1] = { -- table(3bc9140)
 				['Access'] = '',
 				['ClassAddress'] = '0',
 				['ClassName'] = 'TestClass',
@@ -261,20 +262,21 @@ Result of code execution:
 		},
 		['InstanceSize'] = 20,
 		['IsEnum'] = false,
-		['Parent'] = { -- table(3f30311)
-			['ClassAddress'] = '6FEC935F50',
+		['Parent'] = { -- table(30b8879)
+			['ClassAddress'] = '6E083AC3D0',
 			['ClassName'] = 'ValueType',
 		},
-		['TypeMetadataHandle'] = 475139427200,
+		['Token'] = '0x20000D1',
+		['TypeMetadataHandle'] = 466714807168,
 	},
-	[3] = { -- table(98dac76)
-		['ClassAddress'] = '6FEC9A15D0',
+	[3] = { -- table(61429be)
+		['ClassAddress'] = '6E0841D8D0',
 		['ClassName'] = 'TestClass',
 		['ClassNameSpace'] = '',
-		['Fields'] = { -- table(5229277)
-			[ 1] = { -- table(762cee4)
+		['Fields'] = { -- table(241da1f)
+			[ 1] = { -- table(979816c)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field1',
 				['IsConst'] = false,
@@ -282,9 +284,9 @@ Result of code execution:
 				['Offset'] = '18',
 				['Type'] = 'int',
 			},
-			[ 2] = { -- table(873bf4d)
+			[ 2] = { -- table(3b33335)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field2',
 				['IsConst'] = false,
@@ -292,9 +294,9 @@ Result of code execution:
 				['Offset'] = '1C',
 				['Type'] = 'float',
 			},
-			[ 3] = { -- table(201a02)
+			[ 3] = { -- table(ce523ca)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field3',
 				['IsConst'] = false,
@@ -302,9 +304,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[ 4] = { -- table(523df13)
+			[ 4] = { -- table(6b3f93b)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field6',
 				['IsConst'] = true,
@@ -312,9 +314,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[ 5] = { -- table(9eff550)
+			[ 5] = { -- table(f334858)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field7',
 				['IsConst'] = true,
@@ -322,9 +324,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'float',
 			},
-			[ 6] = { -- table(3ca0349)
+			[ 6] = { -- table(4f0cdb1)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field8',
 				['IsConst'] = true,
@@ -332,9 +334,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'string',
 			},
-			[ 7] = { -- table(d79d44e)
+			[ 7] = { -- table(119b296)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field9',
 				['IsConst'] = true,
@@ -342,9 +344,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'uint',
 			},
-			[ 8] = { -- table(de3596f)
+			[ 8] = { -- table(25eee17)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field10',
 				['IsConst'] = true,
@@ -352,9 +354,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'bool',
 			},
-			[ 9] = { -- table(9e7167c)
+			[ 9] = { -- table(bc09204)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field11',
 				['IsConst'] = true,
@@ -362,9 +364,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[10] = { -- table(268b05)
+			[10] = { -- table(9393ed)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field12',
 				['IsConst'] = true,
@@ -372,9 +374,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[11] = { -- table(9a2e75a)
+			[11] = { -- table(c366222)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field13',
 				['IsConst'] = false,
@@ -382,9 +384,9 @@ Result of code execution:
 				['Offset'] = '20',
 				['Type'] = 'TestStruct',
 			},
-			[12] = { -- table(6761d8b)
+			[12] = { -- table(d5a54b3)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field14',
 				['IsConst'] = false,
@@ -392,9 +394,9 @@ Result of code execution:
 				['Offset'] = '28',
 				['Type'] = 'TestClass',
 			},
-			[13] = { -- table(1cd1e68)
+			[13] = { -- table(ab6ca70)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field15',
 				['IsConst'] = false,
@@ -402,9 +404,9 @@ Result of code execution:
 				['Offset'] = '30',
 				['Type'] = 'TestGenericClass`1',
 			},
-			[14] = { -- table(9d281)
+			[14] = { -- table(42281e9)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'random',
 				['IsConst'] = false,
@@ -412,9 +414,9 @@ Result of code execution:
 				['Offset'] = '38',
 				['Type'] = 'Random',
 			},
-			[15] = { -- table(3181f26)
+			[15] = { -- table(97c7e6e)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'textFields',
 				['IsConst'] = false,
@@ -422,9 +424,9 @@ Result of code execution:
 				['Offset'] = '40',
 				['Type'] = 'GameObject[]',
 			},
-			[16] = { -- table(8270767)
+			[16] = { -- table(f9b890f)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'textFieldsMethods',
 				['IsConst'] = false,
@@ -435,18 +437,19 @@ Result of code execution:
 		},
 		['InstanceSize'] = 80,
 		['IsEnum'] = false,
-		['Parent'] = { -- table(d89b914)
-			['ClassAddress'] = '6FEC99FD50',
+		['Parent'] = { -- table(9961d9c)
+			['ClassAddress'] = '6E0841EC10',
 			['ClassName'] = 'TestVirtual',
 		},
-		['StaticFieldData'] = 476991683312,
-		['TypeMetadataHandle'] = 475139493112,
+		['StaticFieldData'] = 468826422000,
+		['Token'] = '0x2000002',
+		['TypeMetadataHandle'] = 466714873080,
 	},
 }
 
 Завершено.
 
-Скрипт записал 122 КБ в 2 файлов.
+Скрипт записал 124 КБ в 2 файлов.
 ```
 
 ![Example](/test/img/TestModule.gif)
@@ -489,15 +492,15 @@ Result of code execution:
 
 ```Lua
 Скрипт завершен:
-{ -- table(c1bab19)
-	[1] = { -- table(43fa7de)
-		['ClassAddress'] = '6FEC94C0D0',
+{ -- table(5e68309)
+	[1] = { -- table(108b90e)
+		['ClassAddress'] = '6E08412650',
 		['ClassName'] = 'TestClass',
 		['ClassNameSpace'] = 'ForTwoClass',
-		['Fields'] = { -- table(eb2dfd5)
-			[1] = { -- table(61a63ea)
+		['Fields'] = { -- table(5eb46c5)
+			[1] = { -- table(61b581a)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC94C0D0',
+				['ClassAddress'] = '6E08412650',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field1',
 				['IsConst'] = false,
@@ -508,33 +511,34 @@ Result of code execution:
 		},
 		['InstanceSize'] = 24,
 		['IsEnum'] = false,
-		['Methods'] = { -- table(7f44dbf)
-			[1] = { -- table(36f7c8c)
+		['Methods'] = { -- table(7ed3f2f)
+			[1] = { -- table(69e693c)
 				['Access'] = 'public',
-				['AddressInMemory'] = '6EA568DDB8',
-				['ClassAddress'] = '6FEC94C0D0',
+				['AddressInMemory'] = '6CC3687DB8',
+				['ClassAddress'] = '6E08412650',
 				['ClassName'] = 'TestClass',
 				['IsAbstract'] = false,
 				['IsStatic'] = false,
-				['MethodInfoAddress'] = 484473195920,
+				['MethodInfoAddress'] = 476347239824,
 				['MethodName'] = '.ctor',
-				['Offset'] = '1020D3DB8',
+				['Offset'] = '1355A0DB8',
 				['ParamCount'] = 1,
 				['ReturnType'] = 'void',
 			},
 		},
-		['Parent'] = { -- table(4aa06db)
-			['ClassAddress'] = '6FEC934C10',
+		['Parent'] = { -- table(c989f4b)
+			['ClassAddress'] = '6E083AC050',
 			['ClassName'] = 'Object',
 		},
-		['TypeMetadataHandle'] = 475139499184,
+		['Token'] = '0x2000047',
+		['TypeMetadataHandle'] = 466714879152,
 	},
-	[2] = { -- table(2ddd578)
-		['ClassAddress'] = '6FEC96DF50',
+	[2] = { -- table(c86dd28)
+		['ClassAddress'] = '6E08414950',
 		['ClassName'] = 'TestClass',
 		['ClassNameSpace'] = '',
-		['Fields'] = { -- table(24ea451)
-			[1] = { -- table(932d4b6)
+		['Fields'] = { -- table(1be8a41)
+			[1] = { -- table(b86dbe6)
 				['Access'] = '',
 				['ClassAddress'] = '0',
 				['ClassName'] = 'TestClass',
@@ -547,20 +551,21 @@ Result of code execution:
 		},
 		['InstanceSize'] = 20,
 		['IsEnum'] = false,
-		['Parent'] = { -- table(23835b7)
-			['ClassAddress'] = '6FEC935F50',
+		['Parent'] = { -- table(94fe527)
+			['ClassAddress'] = '6E083AC3D0',
 			['ClassName'] = 'ValueType',
 		},
-		['TypeMetadataHandle'] = 475139427200,
+		['Token'] = '0x20000D1',
+		['TypeMetadataHandle'] = 466714807168,
 	},
-	[3] = { -- table(4d6d124)
-		['ClassAddress'] = '6FEC9A15D0',
+	[3] = { -- table(200a3d4)
+		['ClassAddress'] = '6E0841D8D0',
 		['ClassName'] = 'TestClass',
 		['ClassNameSpace'] = '',
-		['Fields'] = { -- table(48b9b9a)
-			[ 1] = { -- table(bf65ccb)
+		['Fields'] = { -- table(689fbca)
+			[ 1] = { -- table(bb3f13b)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field1',
 				['IsConst'] = false,
@@ -568,9 +573,9 @@ Result of code execution:
 				['Offset'] = '18',
 				['Type'] = 'int',
 			},
-			[ 2] = { -- table(82d8ca8)
+			[ 2] = { -- table(dbfe058)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field2',
 				['IsConst'] = false,
@@ -578,9 +583,9 @@ Result of code execution:
 				['Offset'] = '1C',
 				['Type'] = 'float',
 			},
-			[ 3] = { -- table(e3043c1)
+			[ 3] = { -- table(d1d85b1)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field3',
 				['IsConst'] = false,
@@ -588,9 +593,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[ 4] = { -- table(777d766)
+			[ 4] = { -- table(c340a96)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field6',
 				['IsConst'] = true,
@@ -598,9 +603,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[ 5] = { -- table(8bfaa7)
+			[ 5] = { -- table(3666617)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field7',
 				['IsConst'] = true,
@@ -608,9 +613,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'float',
 			},
-			[ 6] = { -- table(622cb54)
+			[ 6] = { -- table(27eaa04)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field8',
 				['IsConst'] = true,
@@ -618,9 +623,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'string',
 			},
-			[ 7] = { -- table(dbc5afd)
+			[ 7] = { -- table(ad3cbed)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field9',
 				['IsConst'] = true,
@@ -628,9 +633,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'uint',
 			},
-			[ 8] = { -- table(99a03f2)
+			[ 8] = { -- table(a9e3a22)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field10',
 				['IsConst'] = true,
@@ -638,9 +643,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'bool',
 			},
-			[ 9] = { -- table(2f39a43)
+			[ 9] = { -- table(3614cb3)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field11',
 				['IsConst'] = true,
@@ -648,9 +653,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[10] = { -- table(d8b48c0)
+			[10] = { -- table(b3e6270)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field12',
 				['IsConst'] = true,
@@ -658,9 +663,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[11] = { -- table(8f8a9f9)
+			[11] = { -- table(e2e39e9)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field13',
 				['IsConst'] = false,
@@ -668,9 +673,9 @@ Result of code execution:
 				['Offset'] = '20',
 				['Type'] = 'TestStruct',
 			},
-			[12] = { -- table(5406d3e)
+			[12] = { -- table(289d66e)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field14',
 				['IsConst'] = false,
@@ -678,9 +683,9 @@ Result of code execution:
 				['Offset'] = '28',
 				['Type'] = 'TestClass',
 			},
-			[13] = { -- table(9ab979f)
+			[13] = { -- table(b1a010f)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field15',
 				['IsConst'] = false,
@@ -688,9 +693,9 @@ Result of code execution:
 				['Offset'] = '30',
 				['Type'] = 'TestGenericClass`1',
 			},
-			[14] = { -- table(a3c30ec)
+			[14] = { -- table(6ff359c)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'random',
 				['IsConst'] = false,
@@ -698,9 +703,9 @@ Result of code execution:
 				['Offset'] = '38',
 				['Type'] = 'Random',
 			},
-			[15] = { -- table(510ecb5)
+			[15] = { -- table(fa78ba5)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'textFields',
 				['IsConst'] = false,
@@ -708,9 +713,9 @@ Result of code execution:
 				['Offset'] = '40',
 				['Type'] = 'GameObject[]',
 			},
-			[16] = { -- table(9521f4a)
+			[16] = { -- table(d80eb7a)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'textFieldsMethods',
 				['IsConst'] = false,
@@ -721,124 +726,125 @@ Result of code execution:
 		},
 		['InstanceSize'] = 80,
 		['IsEnum'] = false,
-		['Methods'] = { -- table(908348d)
-			[1] = { -- table(a8f8642)
+		['Methods'] = { -- table(628897d)
+			[1] = { -- table(cd4d072)
 				['Access'] = 'private',
-				['AddressInMemory'] = '6EA567ACCC',
-				['ClassAddress'] = '6FEC9A15D0',
+				['AddressInMemory'] = '6CC3674CCC',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['IsAbstract'] = false,
 				['IsStatic'] = false,
-				['MethodInfoAddress'] = 484472250096,
+				['MethodInfoAddress'] = 476346294000,
 				['MethodName'] = 'Start',
-				['Offset'] = '1020C0CCC',
+				['Offset'] = '13558DCCC',
 				['ParamCount'] = 0,
 				['ReturnType'] = 'void',
 			},
-			[2] = { -- table(3107653)
+			[2] = { -- table(84bacc3)
 				['Access'] = 'public',
-				['AddressInMemory'] = '6EA567B0A4',
-				['ClassAddress'] = '6FEC9A15D0',
+				['AddressInMemory'] = '6CC36750A4',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['IsAbstract'] = false,
 				['IsStatic'] = false,
-				['MethodInfoAddress'] = 484472250184,
+				['MethodInfoAddress'] = 476346294088,
 				['MethodName'] = 'GetField4',
-				['Offset'] = '1020C10A4',
+				['Offset'] = '13558E0A4',
 				['ParamCount'] = 0,
 				['ReturnType'] = 'int',
 			},
-			[3] = { -- table(941db90)
+			[3] = { -- table(8ae2940)
 				['Access'] = 'private',
-				['AddressInMemory'] = '6EA567B0F8',
-				['ClassAddress'] = '6FEC9A15D0',
+				['AddressInMemory'] = '6CC36750F8',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['IsAbstract'] = false,
 				['IsStatic'] = true,
-				['MethodInfoAddress'] = 484472250272,
+				['MethodInfoAddress'] = 476346294176,
 				['MethodName'] = 'GetTwo',
-				['Offset'] = '1020C10F8',
+				['Offset'] = '13558E0F8',
 				['ParamCount'] = 0,
 				['ReturnType'] = 'int',
 			},
-			[4] = { -- table(3508c89)
+			[4] = { -- table(a394079)
 				['Access'] = 'public',
-				['AddressInMemory'] = '6EA567B100',
-				['ClassAddress'] = '6FEC9A15D0',
+				['AddressInMemory'] = '6CC3675100',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['IsAbstract'] = false,
 				['IsStatic'] = false,
-				['MethodInfoAddress'] = 484472250360,
+				['MethodInfoAddress'] = 476346294264,
 				['MethodName'] = 'GetOne',
-				['Offset'] = '1020C1100',
+				['Offset'] = '13558E100',
 				['ParamCount'] = 0,
 				['ReturnType'] = 'int',
 			},
-			[5] = { -- table(f13c48e)
+			[5] = { -- table(29b81be)
 				['Access'] = 'public',
-				['AddressInMemory'] = '6EA567B108',
-				['ClassAddress'] = '6FEC9A15D0',
+				['AddressInMemory'] = '6CC3675108',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['IsAbstract'] = false,
 				['IsStatic'] = false,
-				['MethodInfoAddress'] = 484472250448,
+				['MethodInfoAddress'] = 476346294352,
 				['MethodName'] = 'GetField5',
-				['Offset'] = '1020C1108',
+				['Offset'] = '13558E108',
 				['ParamCount'] = 0,
 				['ReturnType'] = 'int',
 			},
-			[6] = { -- table(52224af)
+			[6] = { -- table(4b2521f)
 				['Access'] = 'public',
-				['AddressInMemory'] = '6EA567B110',
-				['ClassAddress'] = '6FEC9A15D0',
+				['AddressInMemory'] = '6CC3675110',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['IsAbstract'] = false,
 				['IsStatic'] = false,
-				['MethodInfoAddress'] = 484472250536,
+				['MethodInfoAddress'] = 476346294440,
 				['MethodName'] = 'GetField13',
-				['Offset'] = '1020C1110',
+				['Offset'] = '13558E110',
 				['ParamCount'] = 0,
 				['ReturnType'] = 'string',
 			},
-			[7] = { -- table(51120bc)
+			[7] = { -- table(7ec996c)
 				['Access'] = 'public',
-				['AddressInMemory'] = '6EA567AD94',
-				['ClassAddress'] = '6FEC9A15D0',
+				['AddressInMemory'] = '6CC3674D94',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['IsAbstract'] = false,
 				['IsStatic'] = false,
-				['MethodInfoAddress'] = 484472250624,
+				['MethodInfoAddress'] = 476346294528,
 				['MethodName'] = 'UpdateTextField',
-				['Offset'] = '1020C0D94',
+				['Offset'] = '13558DD94',
 				['ParamCount'] = 0,
 				['ReturnType'] = 'void',
 			},
-			[8] = { -- table(dac6845)
+			[8] = { -- table(c046b35)
 				['Access'] = 'public',
-				['AddressInMemory'] = '6EA567B1C8',
-				['ClassAddress'] = '6FEC9A15D0',
+				['AddressInMemory'] = '6CC36751C8',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['IsAbstract'] = false,
 				['IsStatic'] = false,
-				['MethodInfoAddress'] = 484472250712,
+				['MethodInfoAddress'] = 476346294616,
 				['MethodName'] = '.ctor',
-				['Offset'] = '1020C11C8',
+				['Offset'] = '13558E1C8',
 				['ParamCount'] = 0,
 				['ReturnType'] = 'void',
 			},
 		},
-		['Parent'] = { -- table(abc0ebb)
-			['ClassAddress'] = '6FEC99FD50',
+		['Parent'] = { -- table(1ff9f2b)
+			['ClassAddress'] = '6E0841EC10',
 			['ClassName'] = 'TestVirtual',
 		},
-		['StaticFieldData'] = 476991683312,
-		['TypeMetadataHandle'] = 475139493112,
+		['StaticFieldData'] = 468826422000,
+		['Token'] = '0x2000002',
+		['TypeMetadataHandle'] = 466714873080,
 	},
 }
 
 Завершено.
 
-Скрипт записал 122 КБ в 2 файлов.
+Скрипт записал 124 КБ в 2 файлов.
 ```
 
 ![Exapmle](/test/img/Screenshot_20220712-090652.png)
@@ -862,15 +868,15 @@ Result of code execution:
 
 ```lua
 Скрипт завершен:
-{ -- table(88e3eb7)
-	[1] = { -- table(436a624)
-		['ClassAddress'] = '6FEC94C0D0',
+{ -- table(b869691)
+	[1] = { -- table(f5479f6)
+		['ClassAddress'] = '6E08412650',
 		['ClassName'] = 'TestClass',
 		['ClassNameSpace'] = 'ForTwoClass',
-		['Fields'] = { -- table(5bbe58d)
-			[1] = { -- table(8ffe342)
+		['Fields'] = { -- table(e6511f7)
+			[1] = { -- table(88c1864)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC94C0D0',
+				['ClassAddress'] = '6E08412650',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field1',
 				['IsConst'] = false,
@@ -881,18 +887,19 @@ Result of code execution:
 		},
 		['InstanceSize'] = 24,
 		['IsEnum'] = false,
-		['Parent'] = { -- table(33e0f53)
-			['ClassAddress'] = '6FEC934C10',
+		['Parent'] = { -- table(46d0acd)
+			['ClassAddress'] = '6E083AC050',
 			['ClassName'] = 'Object',
 		},
-		['TypeMetadataHandle'] = 475139499184,
+		['Token'] = '0x2000047',
+		['TypeMetadataHandle'] = 466714879152,
 	},
-	[2] = { -- table(74a0090)
-		['ClassAddress'] = '6FEC96DF50',
+	[2] = { -- table(3463f82)
+		['ClassAddress'] = '6E08414950',
 		['ClassName'] = 'TestClass',
 		['ClassNameSpace'] = '',
-		['Fields'] = { -- table(60e4d89)
-			[1] = { -- table(acf18e)
+		['Fields'] = { -- table(cced693)
+			[1] = { -- table(22456d0)
 				['Access'] = '',
 				['ClassAddress'] = '0',
 				['ClassName'] = 'TestClass',
@@ -905,20 +912,21 @@ Result of code execution:
 		},
 		['InstanceSize'] = 20,
 		['IsEnum'] = false,
-		['Parent'] = { -- table(d104daf)
-			['ClassAddress'] = '6FEC935F50',
+		['Parent'] = { -- table(cc86c9)
+			['ClassAddress'] = '6E083AC3D0',
 			['ClassName'] = 'ValueType',
 		},
-		['TypeMetadataHandle'] = 475139427200,
+		['Token'] = '0x20000D1',
+		['TypeMetadataHandle'] = 466714807168,
 	},
-	[3] = { -- table(bf695bc)
-		['ClassAddress'] = '6FEC9A15D0',
+	[3] = { -- table(9cd1ce)
+		['ClassAddress'] = '6E0841D8D0',
 		['ClassName'] = 'TestClass',
 		['ClassNameSpace'] = '',
-		['Fields'] = { -- table(5053945)
-			[ 1] = { -- table(b0a989a)
+		['Fields'] = { -- table(e0648ef)
+			[ 1] = { -- table(ac00ffc)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field1',
 				['IsConst'] = false,
@@ -926,9 +934,9 @@ Result of code execution:
 				['Offset'] = '18',
 				['Type'] = 'int',
 			},
-			[ 2] = { -- table(f1e15cb)
+			[ 2] = { -- table(18dc685)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field2',
 				['IsConst'] = false,
@@ -936,9 +944,9 @@ Result of code execution:
 				['Offset'] = '1C',
 				['Type'] = 'float',
 			},
-			[ 3] = { -- table(7551a8)
+			[ 3] = { -- table(bb83cda)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field3',
 				['IsConst'] = false,
@@ -946,9 +954,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[ 4] = { -- table(c524c1)
+			[ 4] = { -- table(a98850b)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field6',
 				['IsConst'] = true,
@@ -956,9 +964,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[ 5] = { -- table(369a466)
+			[ 5] = { -- table(cfc2fe8)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field7',
 				['IsConst'] = true,
@@ -966,9 +974,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'float',
 			},
-			[ 6] = { -- table(f643a7)
+			[ 6] = { -- table(3694601)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field8',
 				['IsConst'] = true,
@@ -976,9 +984,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'string',
 			},
-			[ 7] = { -- table(ba1e054)
+			[ 7] = { -- table(ced4ca6)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field9',
 				['IsConst'] = true,
@@ -986,9 +994,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'uint',
 			},
-			[ 8] = { -- table(b3e4bfd)
+			[ 8] = { -- table(cc866e7)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field10',
 				['IsConst'] = true,
@@ -996,9 +1004,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'bool',
 			},
-			[ 9] = { -- table(75ba0f2)
+			[ 9] = { -- table(e586294)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field11',
 				['IsConst'] = true,
@@ -1006,9 +1014,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[10] = { -- table(a397343)
+			[10] = { -- table(c23413d)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field12',
 				['IsConst'] = true,
@@ -1016,9 +1024,9 @@ Result of code execution:
 				['Offset'] = '0',
 				['Type'] = 'int',
 			},
-			[11] = { -- table(466adc0)
+			[11] = { -- table(b118d32)
 				['Access'] = 'public',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'Field13',
 				['IsConst'] = false,
@@ -1026,9 +1034,9 @@ Result of code execution:
 				['Offset'] = '20',
 				['Type'] = 'TestStruct',
 			},
-			[12] = { -- table(b28aaf9)
+			[12] = { -- table(62a8a83)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field14',
 				['IsConst'] = false,
@@ -1036,9 +1044,9 @@ Result of code execution:
 				['Offset'] = '28',
 				['Type'] = 'TestClass',
 			},
-			[13] = { -- table(9feda3e)
+			[13] = { -- table(aa31400)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'field15',
 				['IsConst'] = false,
@@ -1046,9 +1054,9 @@ Result of code execution:
 				['Offset'] = '30',
 				['Type'] = 'TestGenericClass`1',
 			},
-			[14] = { -- table(1f6009f)
+			[14] = { -- table(f87b439)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'random',
 				['IsConst'] = false,
@@ -1056,9 +1064,9 @@ Result of code execution:
 				['Offset'] = '38',
 				['Type'] = 'Random',
 			},
-			[15] = { -- table(3e8e5ec)
+			[15] = { -- table(2c74a7e)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'textFields',
 				['IsConst'] = false,
@@ -1066,9 +1074,9 @@ Result of code execution:
 				['Offset'] = '40',
 				['Type'] = 'GameObject[]',
 			},
-			[16] = { -- table(bffdb5)
+			[16] = { -- table(3014bdf)
 				['Access'] = 'private',
-				['ClassAddress'] = '6FEC9A15D0',
+				['ClassAddress'] = '6E0841D8D0',
 				['ClassName'] = 'TestClass',
 				['FieldName'] = 'textFieldsMethods',
 				['IsConst'] = false,
@@ -1079,12 +1087,13 @@ Result of code execution:
 		},
 		['InstanceSize'] = 80,
 		['IsEnum'] = false,
-		['Parent'] = { -- table(a5c4a)
-			['ClassAddress'] = '6FEC99FD50',
+		['Parent'] = { -- table(a25702c)
+			['ClassAddress'] = '6E0841EC10',
 			['ClassName'] = 'TestVirtual',
 		},
-		['StaticFieldData'] = 476991683312,
-		['TypeMetadataHandle'] = 475139493112,
+		['StaticFieldData'] = 468826422000,
+		['Token'] = '0x2000002',
+		['TypeMetadataHandle'] = 466714873080,
 	},
 }
 Field1 	nil
@@ -1106,5 +1115,5 @@ textFieldsMethods 	nil
 
 Завершено.
 
-Скрипт записал 122 КБ в 2 файлов.
+Скрипт записал 124 КБ в 2 файлов.
 ```
