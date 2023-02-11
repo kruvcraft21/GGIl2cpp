@@ -160,8 +160,8 @@ Il2cpp = {
         }
         if not length then
             repeat
-                _char = gg.getValues({char})[1].value
-                chars[#chars + 1] = string.char(_char & 0xFF)
+                _char = gg.getValues({char})[1].value & 0xFF
+                chars[#chars + 1] = string.char(_char)
                 char.address = char.address + 0x1
             until _char <= 0
             return table.concat(chars, "", 1, #chars - 1)

@@ -63,9 +63,7 @@ local VersionEngine = {
     end,
     ReadUnityVersion = function(versionAddress)
         local verisonName = Il2cpp.Utf8ToString(versionAddress)
-        local i, j = string.find(verisonName, "f")
-        if j then verisonName = string.sub(verisonName, 1, j - 1) end
-        return string.gmatch(verisonName, "([^%.]+)%.([^%.]+)%.([^%.]+)")()
+        return string.gmatch(verisonName, "(%d+)%p(%d+)%p(%d+)")()
     end,
     ---@param self VersionEngine
     ---@param version? number
