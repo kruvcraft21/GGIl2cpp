@@ -347,10 +347,10 @@ Il2cpp = {
         }
         if not length then
             repeat
-                _char = gg.getValues({char})[1].value
-                chars[#chars + 1] = string.char(_char & 0xFF)
+                _char = string.char(gg.getValues({char})[1].value & 0xFF)
+                chars[#chars + 1] = _char
                 char.address = char.address + 0x1
-            until _char <= 0
+            until string.find(_char, "[%z%s]")
             return table.concat(chars, "", 1, #chars - 1)
         else
             for i = 1, length do
@@ -2066,7 +2066,7 @@ local VersionEngine = {
                 version = 24.5
             elseif not (unityVersion < self.ConstSemVer['2019_4_15']) then
                 version = 24.4
-            elseif not (unityVersion < self.ChooseVersion['2019_3_7']) then
+            elseif not (unityVersion < self.ConstSemVer['2019_3_7']) then
                 version = 24.3
             end
             return version
@@ -2102,9 +2102,7 @@ local VersionEngine = {
     end,
     ReadUnityVersion = function(versionAddress)
         local verisonName = Il2cpp.Utf8ToString(versionAddress)
-        local i, j = string.find(verisonName, "f")
-        if j then verisonName = string.sub(verisonName, 1, j - 1) end
-        return string.gmatch(verisonName, "([^%.]+)%.([^%.]+)%.([^%.]+)")()
+        return string.gmatch(verisonName, "(%d+)%p(%d+)%p(%d+)")()
     end,
     ---@param self VersionEngine
     ---@param version? number
