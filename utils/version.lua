@@ -27,7 +27,7 @@ local VersionEngine = {
                 version = 24.5
             elseif not (unityVersion < self.ConstSemVer['2019_4_15']) then
                 version = 24.4
-            elseif not (unityVersion < self.ChooseVersion['2019_3_7']) then
+            elseif not (unityVersion < self.ConstSemVer['2019_3_7']) then
                 version = 24.3
             end
             return version

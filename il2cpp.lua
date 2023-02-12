@@ -160,10 +160,10 @@ Il2cpp = {
         }
         if not length then
             repeat
-                _char = gg.getValues({char})[1].value & 0xFF
-                chars[#chars + 1] = string.char(_char)
+                _char = string.char(gg.getValues({char})[1].value & 0xFF)
+                chars[#chars + 1] = _char
                 char.address = char.address + 0x1
-            until _char <= 0
+            until string.find(_char, "[%z%s]")
             return table.concat(chars, "", 1, #chars - 1)
         else
             for i = 1, length do
