@@ -7,7 +7,7 @@ local PatchApi = require("utils.patchapi")
 
 
 ---@class Il2cpp
-Il2cpp = {
+local Il2cppBase = {
     il2cppStart = 0,
     il2cppEnd = 0,
     globalMetadataStart = 0,
@@ -216,11 +216,13 @@ Il2cpp = {
     end,
 }
 
-Il2cpp = setmetatable(Il2cpp, {
+---@type Il2cpp
+Il2cpp = setmetatable({IsInit = false}, {
     ---@param self Il2cpp
     ---@param config? Il2cppConfig
     __call = function(self, config)
         config = config or {}
+        self.IsInit = true
 
         if config.libilcpp then
             self.il2cppStart, self.il2cppEnd = config.libilcpp.start, config.libilcpp['end']
@@ -245,6 +247,10 @@ Il2cpp = setmetatable(Il2cpp, {
         VersionEngine:ChooseVersion(config.il2cppVersion, self.globalMetadataHeader)
 
         Il2cppMemory:ClearMemorize()
+    end,
+    __index = function(self, key)
+        assert(self.IsInit or key == "PatchesAddress", "You didn't call 'Il2cpp'")
+        return Il2cppBase[key]
     end
 })
 
