@@ -217,12 +217,12 @@ local Il2cppBase = {
 }
 
 ---@type Il2cpp
-Il2cpp = setmetatable({IsInit = false}, {
+Il2cpp = setmetatable({}, {
     ---@param self Il2cpp
     ---@param config? Il2cppConfig
     __call = function(self, config)
         config = config or {}
-        self.IsInit = true
+        getmetatable(self).__index = Il2cppBase
 
         if config.libilcpp then
             self.il2cppStart, self.il2cppEnd = config.libilcpp.start, config.libilcpp['end']
@@ -249,7 +249,7 @@ Il2cpp = setmetatable({IsInit = false}, {
         Il2cppMemory:ClearMemorize()
     end,
     __index = function(self, key)
-        assert(self.IsInit or key == "PatchesAddress", "You didn't call 'Il2cpp'")
+        assert(key == "PatchesAddress", "You didn't call 'Il2cpp'")
         return Il2cppBase[key]
     end
 })

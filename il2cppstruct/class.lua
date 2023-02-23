@@ -182,14 +182,11 @@ local ClassApi = {
     FindClassWithName = function(self, ClassName)
         local ClassNamePoint = Il2cpp.GlobalMetadataApi.GetPointersToString(ClassName)
         local ResultTable = {}
-        for i, v in ipairs(ClassNamePoint) do
-            local MainClass = gg.getValues({{
-                address = v.address - self.NameOffset,
-                flags = v.flags
-            }})[1]
-            if (self.IsClassInfo(MainClass.address)) then
+        for classPointIndex, classPoint in ipairs(ClassNamePoint) do
+            local classAddress = classPoint.address - self.NameOffset
+            if (self.IsClassInfo(classAddress)) then
                 ResultTable[#ResultTable + 1] = {
-                    ClassInfoAddress = Il2cpp.FixValue(MainClass.address),
+                    ClassInfoAddress = Il2cpp.FixValue(classAddress),
                     ClassName = ClassName
                 }
             end

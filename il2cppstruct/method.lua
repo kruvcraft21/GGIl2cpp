@@ -16,14 +16,14 @@ local MethodsApi = {
     FindMethodWithName = function(self, MethodName)
         local FinalMethods = {}
         local MethodNamePointers = Il2cpp.GlobalMetadataApi.GetPointersToString(MethodName)
-        for i,v in ipairs(MethodNamePointers) do
-            v.address = v.address - self.NameOffset
-            local MethodAddress = Il2cpp.FixValue(gg.getValues({v})[1].value)
+        for methodPointIndex, methodPoint in ipairs(MethodNamePointers) do
+            methodPoint.address = methodPoint.address - self.NameOffset
+            local MethodAddress = Il2cpp.FixValue(gg.getValues({methodPoint})[1].value)
             if MethodAddress > Il2cpp.il2cppStart and MethodAddress < Il2cpp.il2cppEnd then
                 FinalMethods[#FinalMethods + 1] = {
                     MethodName = MethodName,
                     MethodAddress = MethodAddress,
-                    MethodInfoAddress = v.address
+                    MethodInfoAddress = methodPoint.address
                 }
             end
         end
