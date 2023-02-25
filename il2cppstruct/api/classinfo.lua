@@ -94,25 +94,23 @@ local ClassInfoApi = {
             local klass = self
             while klass ~= nil do
                 if klass.Fields and klass.InstanceSize >= fieldOffset then
-                    local firstFieldInfo
-                    local lastFieldInfo
-                    for j = 1, #klass.Fields do
-                        if not klass.Fields[j].IsStatic then
-                            local offsetNumber = tonumber(klass.Fields[j].Offset, 16)
-                            if not firstFieldInfo then
-                                firstFieldInfo = offsetNumber
-                            end
-                            if firstFieldInfo and fieldOffset >= firstFieldInfo then
-                                if offsetNumber >= fieldOffset then
-                                    return offsetNumber == fieldOffset 
-                                        and klass.Fields[j] 
-                                        or lastFieldInfo
-                                elseif j == #klass.Fields then
-                                    return klass.Fields[j]
-                                elseif offsetNumber > 0 then
-                                    lastFieldInfo = klass.Fields[j]
+                    local lastField
+                    for indexField, field in ipairs(klass.Fields) do
+                        if not (field.IsStatic or field.IsConst) then
+                            local offset = tonumber(field.Offset, 16)
+                            if offset > 0 then 
+                                local maybeStruct = fieldOffset < offset
+
+                                if indexField == 1 and maybeStruct then
+                                    break
+                                elseif offset == fieldOffset or indexField == #klass.Fields then
+                                    return field
+                                elseif maybeStruct then
+                                    return lastField
+                                else
+                                    lastField = field
                                 end
-                            end 
+                            end
                         end
                     end
                 end
