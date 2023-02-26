@@ -157,7 +157,8 @@ local ClassApi = {
             IsEnum = ClassCharacteristic.IsEnum,
             TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle,
             InstanceSize = _ClassInfo[11].value,
-            Token = string.format("0x%X", _ClassInfo[12].value)
+            Token = string.format("0x%X", _ClassInfo[12].value),
+            ImageName = ClassInfo.ImageName
         }, {
             __index = Il2cpp.ClassInfoApi,
             __tostring = StringUtils.ClassInfoToDumpCS
@@ -167,14 +168,24 @@ local ClassApi = {
     --- Defines not quite accurately, especially in the 29th version of the backend
     ---@param Address number
     IsClassInfo = function(Address)
-        local image = Il2cpp.FixValue(gg.getValues({{
-            address = Il2cpp.FixValue(Address),
-            flags = Il2cpp.MainType
-        }})[1].value)
-        return Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{
-            address = image,
-            flags = Il2cpp.MainType
-        }})[1].value)):find(".dll") ~= nil
+        local imageAddress = Il2cpp.FixValue(gg.getValues(
+            {
+                {
+                    address = Il2cpp.FixValue(Address),
+                    flags = Il2cpp.MainType
+                }
+            }
+        )[1].value)
+        local imageStr = Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues(
+            {
+                {
+                    address = imageAddress,
+                    flags = Il2cpp.MainType
+                }
+            }
+        )[1].value))
+        local check = string.find(imageStr, ".-%.dll") or string.find(imageStr, "__Generated")
+        return check and imageStr or nil
     end,
 
 
@@ -184,10 +195,12 @@ local ClassApi = {
         local ResultTable = {}
         for classPointIndex, classPoint in ipairs(ClassNamePoint) do
             local classAddress = classPoint.address - self.NameOffset
-            if (self.IsClassInfo(classAddress)) then
+            local imageName = self.IsClassInfo(classAddress)
+            if (imageName) then
                 ResultTable[#ResultTable + 1] = {
                     ClassInfoAddress = Il2cpp.FixValue(classAddress),
-                    ClassName = ClassName
+                    ClassName = ClassName,
+                    ImageName = imageName
                 }
             end
         end
@@ -198,10 +211,11 @@ local ClassApi = {
 
     ---@param self ClassApi
     ---@return ClassInfoRaw[]
-    FindClassWithAddressInMemory = function(self, ClassAddress)
+    FindClassWithAddressInMemory = function(self, ClassAddress, imageName)
         local ResultTable = {}
         ResultTable[#ResultTable + 1] = {
-            ClassInfoAddress = ClassAddress
+            ClassInfoAddress = ClassAddress,
+            ImageName = imageName
         }
         return ResultTable
     end,
@@ -220,9 +234,11 @@ local ClassApi = {
         ---@type ClassInfoRaw[]
         local resultTable = {}
         for k, v in ipairs(searchTable) do
-            if self.IsClassInfo(v.address - self.Token) then
+            local imageName = self.IsClassInfo(v.address - self.Token)
+            if imageName then
                 resultTable[#resultTable + 1] = {
-                    ClassInfoAddress = v.address - self.Token
+                    ClassInfoAddress = v.address - self.Token,
+                    ImageName = imageName
                 }
             end
         end
@@ -235,8 +251,9 @@ local ClassApi = {
         ---@param self ClassApi
         ---@param _class number @Class Address In Memory
         ['number'] = function(self, _class)
-            if self.IsClassInfo(_class) then
-                return Protect:Call(self.FindClassWithAddressInMemory, self, _class)
+            local imageName = self.IsClassInfo(_class)
+            if imageName then
+                return Protect:Call(self.FindClassWithAddressInMemory, self, _class, imageName)
             else
                 return Protect:Call(self.FindClassWithToken, self, _class)        
             end

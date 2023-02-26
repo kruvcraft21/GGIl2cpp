@@ -4,6 +4,7 @@ local StringUtils = {
     ---@param classInfo ClassInfo
     ClassInfoToDumpCS = function(classInfo)
         local dumpClass = {
+            "// ", classInfo.ImageName, "\n",
             "// Namespace: ", classInfo.ClassNameSpace, "\n";
 
             "class ", classInfo.ClassName, classInfo.Parent and " : " .. classInfo.Parent.ClassName or "", "\n", 
