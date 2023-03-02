@@ -46,19 +46,29 @@ local Searcher = {
 
     FindIl2cpp = function()
         local il2cpp = gg.getRangesList('libil2cpp.so')
-        if (#il2cpp == 0) then
-            local splitconf = gg.getRangesList('split_config.')
+        if #il2cpp == 0 then
+            il2cpp = gg.getRangesList('split_config.')
+            local _il2cpp = {}
             gg.setRanges(gg.REGION_CODE_APP)
-            for k, v in ipairs(splitconf) do
+            for k, v in ipairs(il2cpp) do
                 if (v.state == 'Xa') then
                     gg.searchNumber(':il2cpp', gg.TYPE_BYTE, false, gg.SIGN_EQUAL, v.start, v['end'])
                     if (gg.getResultsCount() > 0) then
-                        il2cpp[#il2cpp + 1] = v
+                        _il2cpp[#_il2cpp + 1] = v
                         gg.clearResults()
                     end
                 end
             end
-        end
+            il2cpp = _il2cpp
+        else
+            local _il2cpp = {}
+            for k,v in ipairs(il2cpp) do
+                if (string.find(v.type, "..x.")) then
+                    _il2cpp[#_il2cpp + 1] = v
+                end
+            end
+            il2cpp = _il2cpp
+        end       
         return il2cpp[1].start, il2cpp[#il2cpp]['end']
     end,
 
