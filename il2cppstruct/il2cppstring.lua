@@ -23,9 +23,6 @@ local StringApi = {
     ---@param self StringApi
     ---@param Address number
     ReadString = function(self, Address)
-        if not self.Utf16 then
-            self:CreateAlf()
-        end
         local bytes, strAddress = {}, Il2cpp.FixValue(Address) + (AndroidInfo.platform and 0x10 or 0x8)
         local num = gg.getValues({{
             address = strAddress,
@@ -39,10 +36,13 @@ local StringApi = {
                 }
             end
             bytes = gg.getValues(bytes)
+            local code = {"return table.concat({"}
             for i, v in ipairs(bytes) do
-                bytes[i] = v.value == 32 and " " or (self.Utf16[v.value] or "")
+                code[#code + 1] = string.format([["\u{%x}",]], v.value & 0xFFFF)
             end
-            return table.concat(bytes)
+            code[#code + 1] = "})"
+            local read, err = load(table.concat(code))
+            return read and read() or ""
         end
         return ""
     end
