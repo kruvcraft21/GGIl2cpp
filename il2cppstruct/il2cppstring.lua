@@ -1,37 +1,51 @@
 local AndroidInfo = require("utils.androidinfo")
 
 ---@class StringApi
----@field Utf16 table
+---@field address number
+---@field Fields table<string, number>
+---@field ClassAddress number
 local StringApi = {
 
 
     ---@param self StringApi
-    CreateAlf = function(self)
-        local Utf16 = {}
-        for s in string.gmatch('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', "..") do
-            local char = gg.bytes(s,'UTF-16LE')
-            Utf16[char[1] + (char[2] * 256)] = s
+    ---@param newStr string
+    EditString = function(self, newStr)
+        local _stringLength = gg.getValues{{address = self.address + self.Fields._stringLength, flags = gg.TYPE_DWORD}}[1].value
+        local bytes = gg.bytes(newStr, "UTF-16LE")
+        if _stringLength * 2 >= #bytes then
+            local strStart = self.address + self.Fields._firstChar
+            for i, v in ipairs(bytes) do
+                bytes[i] = {
+                    address = strStart + (i - 1),
+                    flags = gg.TYPE_BYTE,
+                    value = v
+                }
+            end
+
+            if #bytes % 2 == 1 then
+                bytes[#bytes + 1] = {
+                    address = bytes[#bytes].address + 0x1,
+                    flags = gg.TYPE_BYTE,
+                    value = 0
+                }
+            end
+
+            gg.setValues(bytes)
         end
-        for s in string.gmatch("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_/0123456789-'", ".") do
-            local char = gg.bytes(s,'UTF-16LE')
-            Utf16[char[1] + (char[2] * 256)] = s
-        end
-        self.Utf16 = Utf16
     end,
 
 
+
     ---@param self StringApi
-    ---@param Address number
-    ReadString = function(self, Address)
-        local bytes, strAddress = {}, Il2cpp.FixValue(Address) + (AndroidInfo.platform and 0x10 or 0x8)
-        local num = gg.getValues({{
-            address = strAddress,
-            flags = gg.TYPE_DWORD
-        }})[1].value
-        if num > 0 and num < 200 then
-            for i = 1, num + 1 do
+    ---@return string
+    ReadString = function(self)
+        local _stringLength = gg.getValues{{address = self.address + self.Fields._stringLength, flags = gg.TYPE_DWORD}}[1].value
+        local bytes = {}
+        if _stringLength > 0 and _stringLength < 200 then
+            local strStart = self.address + self.Fields._firstChar
+            for i = 0, _stringLength do
                 bytes[#bytes + 1] = {
-                    address = strAddress + (i << 1),
+                    address = strStart + (i << 1),
                     flags = gg.TYPE_WORD
                 }
             end
@@ -42,10 +56,32 @@ local StringApi = {
             end
             code[#code + 1] = "})"
             local read, err = load(table.concat(code))
-            return read and read() or ""
+            if read then
+                return read()
+            end
         end
         return ""
     end
 }
 
-return StringApi
+local String = {
+
+    ---@param address number
+    From = function(address)
+        local str = setmetatable({address = Il2cpp.FixValue(address), Fields = {}}, {__index = StringApi})
+        local pointClassAddress = gg.getValues({{address = str.address, flags = Il2cpp.MainType}})[1].value
+        local stringInfo = Il2cpp.FindClass({{Class = Il2cpp.FixValue(pointClassAddress), FieldsDump = true}})[1]
+        for i, v in ipairs(stringInfo) do
+            if v.ClassNameSpace == "System" then
+                str.ClassAddress = tonumber(v.ClassAddress, 16)
+                for indexField, FieldInfo in ipairs(v.Fields) do
+                    str.Fields[FieldInfo.FieldName] = tonumber(FieldInfo.Offset, 16)
+                end
+            end
+        end
+        return str
+    end,
+    
+}
+
+return String

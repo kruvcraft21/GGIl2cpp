@@ -26,7 +26,7 @@ local Il2cppBase = {
     ObjectApi = require("il2cppstruct.object"),
     ClassInfoApi = require("il2cppstruct.api.classinfo"),
     FieldInfoApi = require("il2cppstruct.api.fieldinfo"),
-    
+    String = require("il2cppstruct.il2cppstring"),
     --- Patch `Bytescodes` to `add`
     ---
     --- Example:
