@@ -1,5 +1,6 @@
 ---@class StringApi
 ---@field address number
+---@field pointToStr number
 ---@field Fields table<string, number>
 ---@field ClassAddress number
 local StringApi = {
@@ -32,7 +33,36 @@ local StringApi = {
                 }
             end
 
-            gg.setValues(bytes)
+            gg.setValues(_bytes)
+        elseif _stringLength < #bytes then
+            self.address = Il2cpp.MemoryManager.MAlloc(self.Fields._firstChar + #bytes + 8)
+            local length = #bytes % 2 == 1 and #bytes + 1 or #bytes
+            local _bytes = {
+                { -- Head
+                    address = self.address,
+                    flags = Il2cpp.MainType,
+                    value = self.ClassAddress
+                },
+                { -- _stringLength
+                    address = self.address + self.Fields._stringLength,
+                    flags = gg.TYPE_DWORD,
+                    value = length / 2
+                }
+            }
+            local strStart = self.address + self.Fields._firstChar
+            for i = 1, length do
+                _bytes[#_bytes + 1] = {
+                    address = strStart + (i - 1),
+                    flags = gg.TYPE_BYTE,
+                    value = bytes[i] or 0
+                }                
+            end
+            _bytes[#_bytes + 1] = {
+                address = self.pointToStr,
+                flags = Il2cpp.MainType,
+                value = self.address
+            }
+            gg.setValues(_bytes)
         end
     end,
 
@@ -73,7 +103,13 @@ local String = {
     ---@param address number
     ---@return StringApi | nil
     From = function(address)
-        local str = setmetatable({address = Il2cpp.FixValue(address), Fields = {}}, {__index = StringApi})
+        local pointToStr = gg.getValues({{address = Il2cpp.FixValue(address), flags = Il2cpp.MainType}})[1]
+        local str = setmetatable(
+            {
+                address = Il2cpp.FixValue(pointToStr.value), 
+                Fields = {},
+                pointToStr = Il2cpp.FixValue(address)
+            }, {__index = StringApi})
         local pointClassAddress = gg.getValues({{address = str.address, flags = Il2cpp.MainType}})[1].value
         local stringInfo = Il2cpp.FindClass({{Class = Il2cpp.FixValue(pointClassAddress), FieldsDump = true}})[1]
         for i, v in ipairs(stringInfo) do
