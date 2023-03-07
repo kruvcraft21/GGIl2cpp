@@ -1,18 +1,16 @@
-local AndroidInfo = require("utils.androidinfo")
-
 ---@class StringApi
 ---@field address number
 ---@field Fields table<string, number>
 ---@field ClassAddress number
 local StringApi = {
 
-
     ---@param self StringApi
     ---@param newStr string
     EditString = function(self, newStr)
         local _stringLength = gg.getValues{{address = self.address + self.Fields._stringLength, flags = gg.TYPE_DWORD}}[1].value
+        _stringLength = _stringLength * 2
         local bytes = gg.bytes(newStr, "UTF-16LE")
-        if _stringLength * 2 >= #bytes then
+        if _stringLength == #bytes then
             local strStart = self.address + self.Fields._firstChar
             for i, v in ipairs(bytes) do
                 bytes[i] = {
@@ -22,11 +20,15 @@ local StringApi = {
                 }
             end
 
-            if #bytes % 2 == 1 then
-                bytes[#bytes + 1] = {
-                    address = bytes[#bytes].address + 0x1,
+            gg.setValues(bytes)
+        elseif _stringLength > #bytes then
+            local strStart = self.address + self.Fields._firstChar
+            local _bytes = {}
+            for i = 1, _stringLength do
+                _bytes[#_bytes + 1] = {
+                    address = strStart + (i - 1),
                     flags = gg.TYPE_BYTE,
-                    value = 0
+                    value = bytes[i] or 0
                 }
             end
 
@@ -64,9 +66,12 @@ local StringApi = {
     end
 }
 
+---@class MyString
+---@field From fun(address : number) : StringApi | nil
 local String = {
 
     ---@param address number
+    ---@return StringApi | nil
     From = function(address)
         local str = setmetatable({address = Il2cpp.FixValue(address), Fields = {}}, {__index = StringApi})
         local pointClassAddress = gg.getValues({{address = str.address, flags = Il2cpp.MainType}})[1].value
@@ -77,9 +82,10 @@ local String = {
                 for indexField, FieldInfo in ipairs(v.Fields) do
                     str.Fields[FieldInfo.FieldName] = tonumber(FieldInfo.Offset, 16)
                 end
+                return str
             end
         end
-        return str
+        return nil
     end,
     
 }
