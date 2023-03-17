@@ -1125,3 +1125,63 @@ textFieldsMethods 	nil
 
 Скрипт записал 124 КБ в 2 файлов.
 ```
+
+## An example of how you can change a string field
+
+```lua
+Il2cpp()
+
+---@type ClassConfig
+local TestClassConfig = {}
+
+TestClassConfig.Class = "TestClass"
+TestClassConfig.FieldsDump = true
+
+local TestClasses = Il2cpp.FindClass({TestClassConfig, {Class = "TestStruct", FieldsDump = true}})
+
+local field3 = tonumber(TestClasses[2][1]:GetFieldWithName("field3").Offset, 16) - tonumber(TestClasses[2][1]:GetFieldWithName("field1").Offset, 16)
+
+for k,v in ipairs(TestClasses[1]) do
+    local TestClassObject = Il2cpp.FindObject({tonumber(v.ClassAddress, 16)})[1]
+    if v.Parent and v.Parent.ClassName ~= "ValueType" and #v.ClassNameSpace == 0 then
+        for i = 1, #TestClassObject do
+            local str = Il2cpp.String.From(TestClassObject[i].address + tonumber(v:GetFieldWithName("Field16").Offset, 16))
+            local str1 = Il2cpp.String.From(TestClassObject[i].address + tonumber(v:GetFieldWithName("Field13").Offset, 16) + field3)
+            if str and str1 then
+                print(str:ReadString())
+                print(str.ReadString(str))
+                str:EditString("New string, new life, new test")
+                print(str:ReadString())
+
+                print('------------')
+                print(str1:ReadString())
+                str1:EditString("New text, new string, new test")
+                print(str1:ReadString())
+            else
+                print('Error')
+            end
+        end
+    
+    end
+end
+
+os.exit()
+```
+
+Result of code execution:
+
+```lua
+Скрипт завершен:
+For String api 
+For String api 
+New string, new life, new test 
+------------
+Test String 
+New text, new string, new test 
+
+Завершено.
+
+Скрипт записал 130 КБ в 2 файлов.
+```
+
+![Exapmle](/test/img/photo_2023-03-17_22-35-52.jpg)
