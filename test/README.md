@@ -27,6 +27,7 @@ public class TestClass : TestVirtual
     public TestStruct Field13 = new TestStruct(2345, 1234);
     private ForTwoClass.TestClass field14 = new ForTwoClass.TestClass(1);
     private TestGenericClass<int> field15 = new TestGenericClass<int>();
+    public string Field16;
 
     private System.Random random = new System.Random(DateTime.UtcNow.GetHashCode());
 
@@ -37,6 +38,7 @@ public class TestClass : TestVirtual
         Field1 = 1;
         Field2 = 2;
         Field3 = 3;
+        Field16 = "For String api";
 
         textFields = GameObject.FindGameObjectsWithTag("Field");
         textFieldsMethods = GameObject.FindGameObjectsWithTag("FieldMethod");
@@ -66,8 +68,7 @@ public class TestClass : TestVirtual
 
     public string GetField13()
     {
-        TestStruct testStruct = this.Field13;
-        return $"[{testStruct.field1}, {testStruct.field2}]";
+        return this.Field13.ToString();
     }
 
     public void UpdateTextField()
@@ -80,14 +81,14 @@ public class TestClass : TestVirtual
         {
             string nameField = textField.name;
             Debug.Log(nameField);
-            textField.GetComponent<TextMeshProUGUI>().text = nameField + " = " + testClass.GetField(nameField).GetValue(this).ToString();
+            textField.GetComponent<TextMeshProUGUI>().text = String.Format("{0} = {1}", nameField, testClass.GetField(nameField).GetValue(this));
         }
 
         foreach (GameObject textField in textFieldsMethods)
         {
             string nameField = textField.name;
             Debug.Log(nameField);
-            textField.GetComponent<TextMeshProUGUI>().text = nameField + " = " + testClass.GetMethod("Get" + nameField).Invoke((object)this, null);
+            textField.GetComponent<TextMeshProUGUI>().text = String.Format("{0} = {1}", nameField, testClass.GetMethod("Get" + nameField).Invoke((object)this, null));
         }
     }
 }
@@ -103,14 +104,21 @@ public enum TestEnum:int
 
 public struct TestStruct
 {
-    public int field1;
-    public float field2;
+    private int field1;
+    private float field2;
+    private string field3;
     public TestStruct(
         int Field1,
         float Field2)
     {
         this.field1 = Field1;
         this.field2 = Field2;
+        this.field3 = "Test String";
+    }
+
+    public override string ToString()
+    {
+        return $"[{this.field1}, {this.field2}, {this.field3}]";
     }
 }
 
