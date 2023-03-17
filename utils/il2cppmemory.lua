@@ -80,7 +80,9 @@ local Il2cppMemory = {
     ---@param searchParam number | string
     ---@param searchResult FieldInfo[] | ErrorSearch
     SetInformaionOfField = function(self, searchParam, searchResult)
-        self.Fields[searchParam] = searchResult
+        if not searchResult.Error then
+            self.Fields[searchParam] = searchResult
+        end
     end,
 
 
@@ -90,7 +92,9 @@ local Il2cppMemory = {
 
 
     SetInformaionOfMethod = function(self, searchParam, searchResult)
-        self.Methods[searchParam] = searchResult
+        if not searchResult.Error then
+            self.Methods[searchParam] = searchResult
+        end
     end,
 
 
@@ -111,13 +115,15 @@ local Il2cppMemory = {
 
 
     SetInformaionOfClass = function(self, searchParam, searchResult)
-        self.Classes[searchParam.Class] = {
-            Config = {
-                FieldsDump = searchParam.FieldsDump and true,
-                MethodsDump = searchParam.MethodsDump and true
-            },
-            SearchResult = searchResult
-        }
+        if not searchResult.Error then
+            self.Classes[searchParam.Class] = {
+                Config = {
+                    FieldsDump = searchParam.FieldsDump and true,
+                    MethodsDump = searchParam.MethodsDump and true
+                },
+                SearchResult = searchResult
+            }
+        end
     end,
 
 
