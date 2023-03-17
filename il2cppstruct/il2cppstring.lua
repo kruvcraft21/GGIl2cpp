@@ -82,11 +82,11 @@ local StringApi = {
                 }
             end
             bytes = gg.getValues(bytes)
-            local code = {"return table.concat({"}
+            local code = {[[return "]]}
             for i, v in ipairs(bytes) do
-                code[#code + 1] = string.format([["\u{%x}",]], v.value & 0xFFFF)
+                code[#code + 1] = string.format([[\u{%x}]], v.value & 0xFFFF)
             end
-            code[#code + 1] = "})"
+            code[#code + 1] = '"'
             local read, err = load(table.concat(code))
             if read then
                 return read()
