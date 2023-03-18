@@ -47,6 +47,7 @@ require("il2cpp")
 ---@class ClassInfoRaw
 ---@field ClassName string | nil
 ---@field ClassInfoAddress number
+---@field ImageName string
 
 ---@class ClassInfo
 ---@field ClassName string
@@ -60,6 +61,7 @@ require("il2cpp")
 ---@field TypeMetadataHandle number
 ---@field InstanceSize number
 ---@field Token string
+---@field ImageName string
 ---@field GetFieldWithName fun(self : ClassInfo, name : string) : FieldInfo | nil @Get FieldInfo by Field Name. If Fields weren't dumped, then this function return `nil`. Also, if Field isn't found by name, then function will return `nil`
 ---@field GetMethodsWithName fun(self : ClassInfo, name : string) : MethodInfo[] | nil @Get MethodInfo[] by MethodName. If Methods weren't dumped, then this function return `nil`. Also, if Method isn't found by name, then function will return `table with zero size`
 ---@field GetFieldWithOffset fun(self : ClassInfo, fieldOffset : number) : FieldInfo | nil
@@ -194,7 +196,7 @@ local PatchApi = require("utils.patchapi")
 
 
 ---@class Il2cpp
-Il2cpp = {
+local Il2cppBase = {
     il2cppStart = 0,
     il2cppEnd = 0,
     globalMetadataStart = 0,
@@ -213,7 +215,9 @@ Il2cpp = {
     ObjectApi = require("il2cppstruct.object"),
     ClassInfoApi = require("il2cppstruct.api.classinfo"),
     FieldInfoApi = require("il2cppstruct.api.fieldinfo"),
-    
+    ---@type MyString
+    String = require("il2cppstruct.il2cppstring"),
+    MemoryManager = require("utils.malloc"),
     --- Patch `Bytescodes` to `add`
     ---
     --- Example:
@@ -403,11 +407,13 @@ Il2cpp = {
     end,
 }
 
-Il2cpp = setmetatable(Il2cpp, {
+---@type Il2cpp
+Il2cpp = setmetatable({}, {
     ---@param self Il2cpp
     ---@param config? Il2cppConfig
     __call = function(self, config)
         config = config or {}
+        getmetatable(self).__index = Il2cppBase
 
         if config.libilcpp then
             self.il2cppStart, self.il2cppEnd = config.libilcpp.start, config.libilcpp['end']
@@ -432,10 +438,172 @@ Il2cpp = setmetatable(Il2cpp, {
         VersionEngine:ChooseVersion(config.il2cppVersion, self.globalMetadataHeader)
 
         Il2cppMemory:ClearMemorize()
+    end,
+    __index = function(self, key)
+        assert(key == "PatchesAddress", "You didn't call 'Il2cpp'")
+        return Il2cppBase[key]
     end
 })
 
 return Il2cpp
+end)
+__bundle_register("utils.malloc", function(require, _LOADED, __bundle_register, __bundle_modules)
+local MemoryManager = {
+    availableMemory = 0,
+    lastAddress = 0,
+
+    NewAlloc = function(self)
+        self.lastAddress = gg.allocatePage(gg.PROT_READ | gg.PROT_WRITE)
+        self.availableMemory = 4096
+    end,
+}
+
+local M = {
+    ---@param size number
+    MAlloc = function(size)
+        local manager = MemoryManager
+        if size > manager.availableMemory then
+            manager:NewAlloc()
+        end
+        local address = manager.lastAddress
+        manager.availableMemory = manager.availableMemory - size
+        manager.lastAddress = manager.lastAddress + size
+        return address
+    end,
+}
+
+return M
+end)
+__bundle_register("il2cppstruct.il2cppstring", function(require, _LOADED, __bundle_register, __bundle_modules)
+---@class StringApi
+---@field address number
+---@field pointToStr number
+---@field Fields table<string, number>
+---@field ClassAddress number
+local StringApi = {
+
+    ---@param self StringApi
+    ---@param newStr string
+    EditString = function(self, newStr)
+        local _stringLength = gg.getValues{{address = self.address + self.Fields._stringLength, flags = gg.TYPE_DWORD}}[1].value
+        _stringLength = _stringLength * 2
+        local bytes = gg.bytes(newStr, "UTF-16LE")
+        if _stringLength == #bytes then
+            local strStart = self.address + self.Fields._firstChar
+            for i, v in ipairs(bytes) do
+                bytes[i] = {
+                    address = strStart + (i - 1),
+                    flags = gg.TYPE_BYTE,
+                    value = v
+                }
+            end
+
+            gg.setValues(bytes)
+        elseif _stringLength > #bytes then
+            local strStart = self.address + self.Fields._firstChar
+            local _bytes = {}
+            for i = 1, _stringLength do
+                _bytes[#_bytes + 1] = {
+                    address = strStart + (i - 1),
+                    flags = gg.TYPE_BYTE,
+                    value = bytes[i] or 0
+                }
+            end
+
+            gg.setValues(_bytes)
+        elseif _stringLength < #bytes then
+            self.address = Il2cpp.MemoryManager.MAlloc(self.Fields._firstChar + #bytes + 8)
+            local length = #bytes % 2 == 1 and #bytes + 1 or #bytes
+            local _bytes = {
+                { -- Head
+                    address = self.address,
+                    flags = Il2cpp.MainType,
+                    value = self.ClassAddress
+                },
+                { -- _stringLength
+                    address = self.address + self.Fields._stringLength,
+                    flags = gg.TYPE_DWORD,
+                    value = length / 2
+                }
+            }
+            local strStart = self.address + self.Fields._firstChar
+            for i = 1, length do
+                _bytes[#_bytes + 1] = {
+                    address = strStart + (i - 1),
+                    flags = gg.TYPE_BYTE,
+                    value = bytes[i] or 0
+                }                
+            end
+            _bytes[#_bytes + 1] = {
+                address = self.pointToStr,
+                flags = Il2cpp.MainType,
+                value = self.address
+            }
+            gg.setValues(_bytes)
+        end
+    end,
+
+
+
+    ---@param self StringApi
+    ---@return string
+    ReadString = function(self)
+        local _stringLength = gg.getValues{{address = self.address + self.Fields._stringLength, flags = gg.TYPE_DWORD}}[1].value
+        local bytes = {}
+        if _stringLength > 0 and _stringLength < 200 then
+            local strStart = self.address + self.Fields._firstChar
+            for i = 0, _stringLength do
+                bytes[#bytes + 1] = {
+                    address = strStart + (i << 1),
+                    flags = gg.TYPE_WORD
+                }
+            end
+            bytes = gg.getValues(bytes)
+            local code = {[[return "]]}
+            for i, v in ipairs(bytes) do
+                code[#code + 1] = string.format([[\u{%x}]], v.value & 0xFFFF)
+            end
+            code[#code + 1] = '"'
+            local read, err = load(table.concat(code))
+            if read then
+                return read()
+            end
+        end
+        return ""
+    end
+}
+
+---@class MyString
+---@field From fun(address : number) : StringApi | nil
+local String = {
+
+    ---@param address number
+    ---@return StringApi | nil
+    From = function(address)
+        local pointToStr = gg.getValues({{address = Il2cpp.FixValue(address), flags = Il2cpp.MainType}})[1]
+        local str = setmetatable(
+            {
+                address = Il2cpp.FixValue(pointToStr.value), 
+                Fields = {},
+                pointToStr = Il2cpp.FixValue(address)
+            }, {__index = StringApi})
+        local pointClassAddress = gg.getValues({{address = str.address, flags = Il2cpp.MainType}})[1].value
+        local stringInfo = Il2cpp.FindClass({{Class = Il2cpp.FixValue(pointClassAddress), FieldsDump = true}})[1]
+        for i, v in ipairs(stringInfo) do
+            if v.ClassNameSpace == "System" then
+                str.ClassAddress = tonumber(v.ClassAddress, 16)
+                for indexField, FieldInfo in ipairs(v.Fields) do
+                    str.Fields[FieldInfo.FieldName] = tonumber(FieldInfo.Offset, 16)
+                end
+                return str
+            end
+        end
+        return nil
+    end,
+    
+}
+
+return String
 end)
 __bundle_register("il2cppstruct.api.fieldinfo", function(require, _LOADED, __bundle_register, __bundle_modules)
 local Il2cppMemory = require("utils.il2cppmemory")
@@ -547,7 +715,9 @@ local Il2cppMemory = {
     ---@param searchParam number | string
     ---@param searchResult FieldInfo[] | ErrorSearch
     SetInformaionOfField = function(self, searchParam, searchResult)
-        self.Fields[searchParam] = searchResult
+        if not searchResult.Error then
+            self.Fields[searchParam] = searchResult
+        end
     end,
 
 
@@ -557,7 +727,9 @@ local Il2cppMemory = {
 
 
     SetInformaionOfMethod = function(self, searchParam, searchResult)
-        self.Methods[searchParam] = searchResult
+        if not searchResult.Error then
+            self.Methods[searchParam] = searchResult
+        end
     end,
 
 
@@ -578,13 +750,15 @@ local Il2cppMemory = {
 
 
     SetInformaionOfClass = function(self, searchParam, searchResult)
-        self.Classes[searchParam.Class] = {
-            Config = {
-                FieldsDump = searchParam.FieldsDump and true,
-                MethodsDump = searchParam.MethodsDump and true
-            },
-            SearchResult = searchResult
-        }
+        if not searchResult.Error then
+            self.Classes[searchParam.Class] = {
+                Config = {
+                    FieldsDump = searchParam.FieldsDump and true,
+                    MethodsDump = searchParam.MethodsDump and true
+                },
+                SearchResult = searchResult
+            }
+        end
     end,
 
 
@@ -700,25 +874,23 @@ local ClassInfoApi = {
             local klass = self
             while klass ~= nil do
                 if klass.Fields and klass.InstanceSize >= fieldOffset then
-                    local firstFieldInfo
-                    local lastFieldInfo
-                    for j = 1, #klass.Fields do
-                        if not klass.Fields[j].IsStatic then
-                            local offsetNumber = tonumber(klass.Fields[j].Offset, 16)
-                            if not firstFieldInfo then
-                                firstFieldInfo = offsetNumber
-                            end
-                            if firstFieldInfo and fieldOffset >= firstFieldInfo then
-                                if offsetNumber >= fieldOffset then
-                                    return offsetNumber == fieldOffset 
-                                        and klass.Fields[j] 
-                                        or lastFieldInfo
-                                elseif j == #klass.Fields then
-                                    return klass.Fields[j]
-                                elseif offsetNumber > 0 then
-                                    lastFieldInfo = klass.Fields[j]
+                    local lastField
+                    for indexField, field in ipairs(klass.Fields) do
+                        if not (field.IsStatic or field.IsConst) then
+                            local offset = tonumber(field.Offset, 16)
+                            if offset > 0 then 
+                                local maybeStruct = fieldOffset < offset
+
+                                if indexField == 1 and maybeStruct then
+                                    break
+                                elseif offset == fieldOffset or indexField == #klass.Fields then
+                                    return field
+                                elseif maybeStruct then
+                                    return lastField
+                                else
+                                    lastField = field
                                 end
-                            end 
+                            end
                         end
                     end
                 end
@@ -1008,7 +1180,8 @@ local ClassApi = {
             IsEnum = ClassCharacteristic.IsEnum,
             TypeMetadataHandle = ClassCharacteristic.TypeMetadataHandle,
             InstanceSize = _ClassInfo[11].value,
-            Token = string.format("0x%X", _ClassInfo[12].value)
+            Token = string.format("0x%X", _ClassInfo[12].value),
+            ImageName = ClassInfo.ImageName
         }, {
             __index = Il2cpp.ClassInfoApi,
             __tostring = StringUtils.ClassInfoToDumpCS
@@ -1018,14 +1191,24 @@ local ClassApi = {
     --- Defines not quite accurately, especially in the 29th version of the backend
     ---@param Address number
     IsClassInfo = function(Address)
-        local image = Il2cpp.FixValue(gg.getValues({{
-            address = Il2cpp.FixValue(Address),
-            flags = Il2cpp.MainType
-        }})[1].value)
-        return Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues({{
-            address = image,
-            flags = Il2cpp.MainType
-        }})[1].value)):find(".dll") ~= nil
+        local imageAddress = Il2cpp.FixValue(gg.getValues(
+            {
+                {
+                    address = Il2cpp.FixValue(Address),
+                    flags = Il2cpp.MainType
+                }
+            }
+        )[1].value)
+        local imageStr = Il2cpp.Utf8ToString(Il2cpp.FixValue(gg.getValues(
+            {
+                {
+                    address = imageAddress,
+                    flags = Il2cpp.MainType
+                }
+            }
+        )[1].value))
+        local check = string.find(imageStr, ".-%.dll") or string.find(imageStr, "__Generated")
+        return check and imageStr or nil
     end,
 
 
@@ -1033,15 +1216,14 @@ local ClassApi = {
     FindClassWithName = function(self, ClassName)
         local ClassNamePoint = Il2cpp.GlobalMetadataApi.GetPointersToString(ClassName)
         local ResultTable = {}
-        for i, v in ipairs(ClassNamePoint) do
-            local MainClass = gg.getValues({{
-                address = v.address - self.NameOffset,
-                flags = v.flags
-            }})[1]
-            if (self.IsClassInfo(MainClass.address)) then
+        for classPointIndex, classPoint in ipairs(ClassNamePoint) do
+            local classAddress = classPoint.address - self.NameOffset
+            local imageName = self.IsClassInfo(classAddress)
+            if (imageName) then
                 ResultTable[#ResultTable + 1] = {
-                    ClassInfoAddress = Il2cpp.FixValue(MainClass.address),
-                    ClassName = ClassName
+                    ClassInfoAddress = Il2cpp.FixValue(classAddress),
+                    ClassName = ClassName,
+                    ImageName = imageName
                 }
             end
         end
@@ -1054,34 +1236,15 @@ local ClassApi = {
     ---@return ClassInfoRaw[]
     FindClassWithAddressInMemory = function(self, ClassAddress)
         local ResultTable = {}
-        ResultTable[#ResultTable + 1] = {
-            ClassInfoAddress = ClassAddress
-        }
-        return ResultTable
-    end,
-
-
-    ---@param self ClassApi
-    ---@param token number
-    ---@return ClassInfoRaw[]
-    FindClassWithToken = function(self, token)
-        gg.clearResults()
-        gg.setRanges(0)
-        gg.setRanges(gg.REGION_C_ALLOC | gg.REGION_C_BSS | gg.REGION_C_DATA | gg.REGION_C_HEAP | gg.REGION_OTHER)
-        gg.searchNumber(tostring(token), gg.TYPE_DWORD)
-        local searchTable = gg.getResults(gg.getResultsCount())
-        gg.clearResults()
-        ---@type ClassInfoRaw[]
-        local resultTable = {}
-        for k, v in ipairs(searchTable) do
-            if self.IsClassInfo(v.address - self.Token) then
-                resultTable[#resultTable + 1] = {
-                    ClassInfoAddress = v.address - self.Token
-                }
-            end
+        local imageName = self.IsClassInfo(ClassAddress)
+        if imageName then
+            ResultTable[#ResultTable + 1] = {
+                ClassInfoAddress = ClassAddress,
+                ImageName = imageName
+            }
         end
-        assert(#resultTable > 0, string.format("nothing was found for this 0x%X number", token))
-        return resultTable
+        assert(#ResultTable > 0, string.format("nothing was found for this address 0x%X", ClassAddress))
+        return ResultTable
     end,
 
 
@@ -1089,11 +1252,7 @@ local ClassApi = {
         ---@param self ClassApi
         ---@param _class number @Class Address In Memory
         ['number'] = function(self, _class)
-            if self.IsClassInfo(_class) then
-                return Protect:Call(self.FindClassWithAddressInMemory, self, _class)
-            else
-                return Protect:Call(self.FindClassWithToken, self, _class)        
-            end
+            return Protect:Call(self.FindClassWithAddressInMemory, self, _class)
         end,
         ---@param self ClassApi
         ---@param _class string @Class Name
@@ -1136,6 +1295,7 @@ local StringUtils = {
     ---@param classInfo ClassInfo
     ClassInfoToDumpCS = function(classInfo)
         local dumpClass = {
+            "// ", classInfo.ImageName, "\n",
             "// Namespace: ", classInfo.ClassNameSpace, "\n";
 
             "class ", classInfo.ClassName, classInfo.Parent and " : " .. classInfo.Parent.ClassName or "", "\n", 
@@ -1603,14 +1763,14 @@ local MethodsApi = {
     FindMethodWithName = function(self, MethodName)
         local FinalMethods = {}
         local MethodNamePointers = Il2cpp.GlobalMetadataApi.GetPointersToString(MethodName)
-        for i,v in ipairs(MethodNamePointers) do
-            v.address = v.address - self.NameOffset
-            local MethodAddress = Il2cpp.FixValue(gg.getValues({v})[1].value)
+        for methodPointIndex, methodPoint in ipairs(MethodNamePointers) do
+            methodPoint.address = methodPoint.address - self.NameOffset
+            local MethodAddress = Il2cpp.FixValue(gg.getValues({methodPoint})[1].value)
             if MethodAddress > Il2cpp.il2cppStart and MethodAddress < Il2cpp.il2cppEnd then
                 FinalMethods[#FinalMethods + 1] = {
                     MethodName = MethodName,
                     MethodAddress = MethodAddress,
-                    MethodInfoAddress = v.address
+                    MethodInfoAddress = methodPoint.address
                 }
             end
         end
@@ -1948,19 +2108,29 @@ local Searcher = {
 
     FindIl2cpp = function()
         local il2cpp = gg.getRangesList('libil2cpp.so')
-        if (#il2cpp == 0) then
-            local splitconf = gg.getRangesList('split_config.')
+        if #il2cpp == 0 then
+            il2cpp = gg.getRangesList('split_config.')
+            local _il2cpp = {}
             gg.setRanges(gg.REGION_CODE_APP)
-            for k, v in ipairs(splitconf) do
+            for k, v in ipairs(il2cpp) do
                 if (v.state == 'Xa') then
                     gg.searchNumber(':il2cpp', gg.TYPE_BYTE, false, gg.SIGN_EQUAL, v.start, v['end'])
                     if (gg.getResultsCount() > 0) then
-                        il2cpp[#il2cpp + 1] = v
+                        _il2cpp[#_il2cpp + 1] = v
                         gg.clearResults()
                     end
                 end
             end
-        end
+            il2cpp = _il2cpp
+        else
+            local _il2cpp = {}
+            for k,v in ipairs(il2cpp) do
+                if (string.find(v.type, "..x.")) then
+                    _il2cpp[#_il2cpp + 1] = v
+                end
+            end
+            il2cpp = _il2cpp
+        end       
         return il2cpp[1].start, il2cpp[#il2cpp]['end']
     end,
 
