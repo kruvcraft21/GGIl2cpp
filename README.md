@@ -8,4 +8,4 @@ The module has support for the [Lua](https://marketplace.visualstudio.com/items?
 
 The script is divided and available for assembly. You can also use an already built version from the [build](/build/) folder or from the [Releases](https://github.com/kruvcraft21/GGIl2cpp/releases/latest) tab. Script is built using the [luabundle](https://github.com/Benjamin-Dobell/luabundle) library.
 
-All documentation about the module is available on the [wiki](../wiki/)
+All documentation about the module is available on the [wiki](../../wiki/)
