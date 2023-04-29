@@ -63,7 +63,7 @@ local Searcher = {
         else
             local _il2cpp = {}
             for k,v in ipairs(il2cpp) do
-                if (string.find(v.type, "..x.")) then
+                if (string.find(v.type, "..x.") or v.state == "Xa") then
                     _il2cpp[#_il2cpp + 1] = v
                 end
             end
