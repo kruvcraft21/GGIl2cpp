@@ -1,13 +1,13 @@
 -- Memorizing Il2cpp Search Result
 ---@class Il2cppMemory
----@field Methods table<number | string, MethodInfo[] | ErrorSearch>
+---@field Methods table<number | string, table<number | string, MethodInfo[] | ErrorSearch | number>>
 ---@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
 ---@field Fields table<number | string, FieldInfo[] | ErrorSearch>
 ---@field Results table
 ---@field Types table<number, string>
 ---@field DefaultValues table<number, string | number>
----@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
----@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
+---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : table<number | string, MethodInfo[] | ErrorSearch | number> | nil
+---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : table<number | string, MethodInfo[] | ErrorSearch | number>) : void
 ---@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
 ---@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : ClassConfig) : ClassInfo[] | nil | ErrorSearch
 ---@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void

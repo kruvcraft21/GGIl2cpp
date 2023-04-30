@@ -1,5 +1,6 @@
 local AndroidInfo = require("utils.androidinfo")
 local Protect = require("utils.protect")
+local Il2cppMemory = require("utils.il2cppmemory")
 
 ---@class MethodsApi
 ---@field ClassOffset number
@@ -175,7 +176,8 @@ local MethodsApi = {
     Find = function(self, method)
         ---@type MethodInfoRaw[] | ErrorSearch
         local _MethodsInfo = (self.FindParamsCheck[type(method)] or self.FindParamsCheck['default'])(self, method)
-        if (#_MethodsInfo > 0) then
+        local searchResult = Il2cppMemory:GetInformaionOfMethod(method)
+        if (not(searchResult) or searchResult['len'] < #_MethodsInfo) then
             local MethodsInfo = {}
             for i = 1, #_MethodsInfo do
                 local MethodInfo
@@ -184,6 +186,9 @@ local MethodsApi = {
             end
             MethodsInfo = gg.getValues(MethodsInfo)
             self:DecodeMethodsInfo(_MethodsInfo, MethodsInfo)
+            Il2cppMemory:SetInformaionOfMethod(method, {['len'] = #_MethodsInfo, [#_MethodsInfo] = _MethodsInfo})
+        else
+            _MethodsInfo = searchResult[searchResult['len']]
         end
 
         return _MethodsInfo

@@ -66,13 +66,7 @@ local Il2cppBase = {
         Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
             ---@type number | string
-            local searchParam = searchParams[i]
-            local searchResult = Il2cppMemory:GetInformaionOfMethod(searchParam)
-            if not searchResult then
-                searchResult = Il2cpp.MethodsApi:Find(searchParam)
-                Il2cppMemory:SetInformaionOfMethod(searchParam, searchResult)
-            end
-            searchParams[i] = searchResult
+            searchParams[i] = Il2cpp.MethodsApi:Find(searchParams[i])
         end
         Il2cppMemory:ClearSavedResults()
         return searchParams
