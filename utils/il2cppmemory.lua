@@ -11,10 +11,10 @@
 ---@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
 ---@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : string | number) : table<string, ClassInfo[] | ErrorSearch | number | ClassConfig>
 ---@field SetInformationOfClass fun(self : Il2cppMemory, searchParam : string | number, searchResult : table<string, ClassInfo[] | ErrorSearch | number | ClassConfig>) : void
----@field GetInformaionOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
----@field SetInformaionOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
----@field GetInformaionOfType fun(self : Il2cppMemory, index : number) : string | nil
----@field SetInformaionOfType fun(self : Il2cppMemory, index : number, typeName : string)
+---@field GetInformationOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
+---@field SetInformationOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
+---@field GetInformationOfType fun(self : Il2cppMemory, index : number) : string | nil
+---@field SetInformationOfType fun(self : Il2cppMemory, index : number, typeName : string)
 ---@field SaveResults fun(self : Il2cppMemory) : void
 ---@field ClearSavedResults fun(self : Il2cppMemory) : void
 local Il2cppMemory = {
@@ -28,13 +28,13 @@ local Il2cppMemory = {
 
     ---@param self Il2cppMemory
     ---@return nil | string
-    GetInformaionOfType = function(self, index)
+    GetInformationOfType = function(self, index)
         return self.Types[index]
     end,
 
 
     ---@param self Il2cppMemory
-    SetInformaionOfType = function(self, index, typeName)
+    SetInformationOfType = function(self, index, typeName)
         self.Types[index] = typeName
     end,
 
@@ -71,7 +71,7 @@ local Il2cppMemory = {
     ---@param self Il2cppMemory
     ---@param searchParam number | string
     ---@return FieldInfo[] | nil | ErrorSearch
-    GetInformaionOfField = function(self, searchParam)
+    GetInformationOfField = function(self, searchParam)
         return self.Fields[searchParam]
     end,
 
@@ -79,7 +79,7 @@ local Il2cppMemory = {
     ---@param self Il2cppMemory
     ---@param searchParam number | string
     ---@param searchResult FieldInfo[] | ErrorSearch
-    SetInformaionOfField = function(self, searchParam, searchResult)
+    SetInformationOfField = function(self, searchParam, searchResult)
         if not searchResult.Error then
             self.Fields[searchParam] = searchResult
         end
@@ -98,18 +98,15 @@ local Il2cppMemory = {
     end,
 
 
-    GetInfoOfClass = function(self, searchParam)
-        return self.Classes[searchParam]
-    end,
-
     GetInformationOfClass = function(self, searchParam)
         return self.Classes[searchParam]
     end,
 
+
     SetInformationOfClass = function(self, searchParam, searchResult)
         self.Classes[searchParam] = searchResult
     end,
-    
+
 
     ---@param self Il2cppMemory
     ---@return void

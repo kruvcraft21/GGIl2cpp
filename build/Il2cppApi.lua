@@ -329,10 +329,10 @@ local Il2cppBase = {
         for i = 1, #searchParams do
             ---@type number | string
             local searchParam = searchParams[i]
-            local searchResult = Il2cppMemory:GetInformaionOfField(searchParam)
+            local searchResult = Il2cppMemory:GetInformationOfField(searchParam)
             if not searchResult then
                 searchResult = Il2cpp.FieldApi:Find(searchParam)
-                Il2cppMemory:SetInformaionOfField(searchParam, searchResult)
+                Il2cppMemory:SetInformationOfField(searchParam, searchResult)
             end
             searchParams[i] = searchResult
         end
@@ -646,10 +646,10 @@ __bundle_register("utils.il2cppmemory", function(require, _LOADED, __bundle_regi
 ---@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
 ---@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : ClassConfig) : ClassInfo[] | nil | ErrorSearch
 ---@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
----@field GetInformaionOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
----@field SetInformaionOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
----@field GetInformaionOfType fun(self : Il2cppMemory, index : number) : string | nil
----@field SetInformaionOfType fun(self : Il2cppMemory, index : number, typeName : string)
+---@field GetInformationOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
+---@field SetInformationOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
+---@field GetInformationOfType fun(self : Il2cppMemory, index : number) : string | nil
+---@field SetInformationOfType fun(self : Il2cppMemory, index : number, typeName : string)
 ---@field SaveResults fun(self : Il2cppMemory) : void
 ---@field ClearSavedResults fun(self : Il2cppMemory) : void
 local Il2cppMemory = {
@@ -663,13 +663,13 @@ local Il2cppMemory = {
 
     ---@param self Il2cppMemory
     ---@return nil | string
-    GetInformaionOfType = function(self, index)
+    GetInformationOfType = function(self, index)
         return self.Types[index]
     end,
 
 
     ---@param self Il2cppMemory
-    SetInformaionOfType = function(self, index, typeName)
+    SetInformationOfType = function(self, index, typeName)
         self.Types[index] = typeName
     end,
 
@@ -706,7 +706,7 @@ local Il2cppMemory = {
     ---@param self Il2cppMemory
     ---@param searchParam number | string
     ---@return FieldInfo[] | nil | ErrorSearch
-    GetInformaionOfField = function(self, searchParam)
+    GetInformationOfField = function(self, searchParam)
         return self.Fields[searchParam]
     end,
 
@@ -714,7 +714,7 @@ local Il2cppMemory = {
     ---@param self Il2cppMemory
     ---@param searchParam number | string
     ---@param searchResult FieldInfo[] | ErrorSearch
-    SetInformaionOfField = function(self, searchParam, searchResult)
+    SetInformationOfField = function(self, searchParam, searchResult)
         if not searchResult.Error then
             self.Fields[searchParam] = searchResult
         end
@@ -2010,10 +2010,10 @@ local TypeApi = {
         ---@type string | fun(index : number) : string
         local typeName = self.tableTypes[typeIndex] or string.format('(not support type -> 0x%X)', typeIndex)
         if (type(typeName) == 'function') then
-            local resultType = Il2cppMemory:GetInformaionOfType(index)
+            local resultType = Il2cppMemory:GetInformationOfType(index)
             if not resultType then
                 resultType = typeName(index)
-                Il2cppMemory:SetInformaionOfType(index, resultType)
+                Il2cppMemory:SetInformationOfType(index, resultType)
             end
             typeName = resultType
         end

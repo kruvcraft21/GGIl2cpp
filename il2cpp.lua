@@ -116,10 +116,10 @@ local Il2cppBase = {
         for i = 1, #searchParams do
             ---@type number | string
             local searchParam = searchParams[i]
-            local searchResult = Il2cppMemory:GetInformaionOfField(searchParam)
+            local searchResult = Il2cppMemory:GetInformationOfField(searchParam)
             if not searchResult then
                 searchResult = Il2cpp.FieldApi:Find(searchParam)
-                Il2cppMemory:SetInformaionOfField(searchParam, searchResult)
+                Il2cppMemory:SetInformationOfField(searchParam, searchResult)
             end
             searchParams[i] = searchResult
         end
