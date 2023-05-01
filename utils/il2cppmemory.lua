@@ -1,6 +1,6 @@
 -- Memorizing Il2cpp Search Result
 ---@class Il2cppMemory
----@field Methods table<number | string, table<number | string, MethodInfo[] | ErrorSearch | number>>
+---@field Methods table<number | string, table<string, MethodInfo[] | ErrorSearch | number>>
 ---@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
 ---@field Fields table<number | string, FieldInfo[] | ErrorSearch>
 ---@field Results table

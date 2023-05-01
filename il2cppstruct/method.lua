@@ -186,9 +186,9 @@ local MethodsApi = {
             end
             MethodsInfo = gg.getValues(MethodsInfo)
             self:DecodeMethodsInfo(_MethodsInfo, MethodsInfo)
-            Il2cppMemory:SetInformaionOfMethod(method, {['len'] = #_MethodsInfo, [#_MethodsInfo] = _MethodsInfo})
+            Il2cppMemory:SetInformaionOfMethod(method, {['len'] = #_MethodsInfo, ['result'] = _MethodsInfo})
         else
-            _MethodsInfo = searchResult[searchResult['len']]
+            _MethodsInfo = searchResult.result
         end
 
         return _MethodsInfo
