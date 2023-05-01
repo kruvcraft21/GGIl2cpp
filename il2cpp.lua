@@ -81,14 +81,7 @@ local Il2cppBase = {
     FindClass = function(searchParams)
         Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
-            ---@type ClassConfig
-            local searchParam = searchParams[i]
-            local searchResult = Il2cppMemory:GetInformationOfClass(searchParam)
-            if not searchResult then
-                searchResult = Il2cpp.ClassApi:Find(searchParam)
-                Il2cppMemory:SetInformaionOfClass(searchParam, searchResult)
-            end
-            searchParams[i] = searchResult
+            searchParams[i] = Il2cpp.ClassApi:Find(searchParams[i])
         end
         Il2cppMemory:ClearSavedResults()
         return searchParams
@@ -105,18 +98,7 @@ local Il2cppBase = {
     FindObject = function(searchParams)
         Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
-            local searchParam = searchParams[i]
-            local classesMemory = Il2cppMemory:GetInfoOfClass(searchParam)
-            if classesMemory then
-                searchParams[i] = Il2cpp.ObjectApi:Find(classesMemory.SearchResult)
-            else
-                local classConfig = {
-                    Class = searchParam
-                }
-                local searchResult = Il2cpp.ClassApi:Find(classConfig)
-                Il2cppMemory:SetInformaionOfClass(classConfig, searchResult)
-                searchParams[i] = Il2cpp.ObjectApi:Find(searchResult)
-            end
+            searchParams[i] = Il2cpp.ObjectApi:Find(Il2cpp.ClassApi:Find({Class = searchParams[i]}))
         end
         Il2cppMemory:ClearSavedResults()
         return searchParams

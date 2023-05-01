@@ -1,7 +1,7 @@
 -- Memorizing Il2cpp Search Result
 ---@class Il2cppMemory
 ---@field Methods table<number | string, table<string, MethodInfo[] | ErrorSearch | number>>
----@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
+---@field Classes table<string | number, table<string, ClassInfo[] | ErrorSearch | number | ClassConfig>>
 ---@field Fields table<number | string, FieldInfo[] | ErrorSearch>
 ---@field Results table
 ---@field Types table<number, string>
@@ -9,8 +9,8 @@
 ---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : table<number | string, MethodInfo[] | ErrorSearch | number> | nil
 ---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : table<number | string, MethodInfo[] | ErrorSearch | number>) : void
 ---@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
----@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : ClassConfig) : ClassInfo[] | nil | ErrorSearch
----@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
+---@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : string | number) : table<string, ClassInfo[] | ErrorSearch | number | ClassConfig>
+---@field SetInformationOfClass fun(self : Il2cppMemory, searchParam : string | number, searchResult : table<string, ClassInfo[] | ErrorSearch | number | ClassConfig>) : void
 ---@field GetInformaionOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
 ---@field SetInformaionOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
 ---@field GetInformaionOfType fun(self : Il2cppMemory, index : number) : string | nil
@@ -102,30 +102,14 @@ local Il2cppMemory = {
         return self.Classes[searchParam]
     end,
 
-
     GetInformationOfClass = function(self, searchParam)
-        local ClassMemory = self:GetInfoOfClass(searchParam.Class)
-        if not (ClassMemory and
-            (ClassMemory.Config.FieldsDump == searchParam.FieldsDump and ClassMemory.Config.MethodsDump ==
-                searchParam.MethodsDump)) then
-            return nil
-        end
-        return ClassMemory.SearchResult
+        return self.Classes[searchParam]
     end,
 
-
-    SetInformaionOfClass = function(self, searchParam, searchResult)
-        if not searchResult.Error then
-            self.Classes[searchParam.Class] = {
-                Config = {
-                    FieldsDump = searchParam.FieldsDump and true,
-                    MethodsDump = searchParam.MethodsDump and true
-                },
-                SearchResult = searchResult
-            }
-        end
+    SetInformationOfClass = function(self, searchParam, searchResult)
+        self.Classes[searchParam] = searchResult
     end,
-
+    
 
     ---@param self Il2cppMemory
     ---@return void

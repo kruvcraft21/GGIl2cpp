@@ -1,5 +1,6 @@
 local Protect = require("utils.protect")
 local StringUtils = require("utils.stringutils")
+local Il2cppMemory = require("utils.il2cppmemory")
 
 ---@class ClassApi
 ---@field NameOffset number
@@ -251,13 +252,28 @@ local ClassApi = {
         ---@type ClassInfoRaw[] | ErrorSearch
         local ClassInfo =
             (self.FindParamsCheck[type(class.Class)] or self.FindParamsCheck['default'])(self, class.Class)
-        if #ClassInfo ~= 0 then
+        local searchResult = Il2cppMemory:GetInformationOfClass(class.Class)
+        if not(searchResult) or 
+        searchResult['len'] < #ClassInfo or 
+        ((class.FieldsDump or class.MethodsDump) and 
+        (class.FieldsDump ~= searchResult.config.FieldsDump or class.MethodsDump ~= searchResult.config.MethodsDump)) 
+        then
             for k = 1, #ClassInfo do
                 ClassInfo[k] = self:UnpackClassInfo(ClassInfo[k], {
                     FieldsDump = class.FieldsDump,
                     MethodsDump = class.MethodsDump
                 })
             end
+            Il2cppMemory:SetInformationOfClass(class.Class, {
+                ['len'] = #ClassInfo, 
+                ['config'] = {
+                    Class = class.Class, 
+                    FieldsDump = class.FieldsDump, 
+                    MethodsDump = class.MethodsDump,
+                }, 
+                ['result'] = ClassInfo})
+        else
+            ClassInfo = searchResult.result
         end
         return ClassInfo
     end
