@@ -79,6 +79,10 @@ require("il2cpp")
 ---@field Config ClassConfig
 ---@field SearchResult ClassInfo[]
 
+---@class MethodMemory
+---@field len number
+---@field result MethodInfo[] | ErrorSearch
+---@field isNew boolean | nil
 
 ---@class FieldInfo
 ---@field ClassName string 
@@ -255,13 +259,7 @@ local Il2cppBase = {
         Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
             ---@type number | string
-            local searchParam = searchParams[i]
-            local searchResult = Il2cppMemory:GetInformaionOfMethod(searchParam)
-            if not searchResult then
-                searchResult = Il2cpp.MethodsApi:Find(searchParam)
-                Il2cppMemory:SetInformaionOfMethod(searchParam, searchResult)
-            end
-            searchParams[i] = searchResult
+            searchParams[i] = Il2cpp.MethodsApi:Find(searchParams[i])
         end
         Il2cppMemory:ClearSavedResults()
         return searchParams
@@ -276,14 +274,7 @@ local Il2cppBase = {
     FindClass = function(searchParams)
         Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
-            ---@type ClassConfig
-            local searchParam = searchParams[i]
-            local searchResult = Il2cppMemory:GetInformationOfClass(searchParam)
-            if not searchResult then
-                searchResult = Il2cpp.ClassApi:Find(searchParam)
-                Il2cppMemory:SetInformaionOfClass(searchParam, searchResult)
-            end
-            searchParams[i] = searchResult
+            searchParams[i] = Il2cpp.ClassApi:Find(searchParams[i])
         end
         Il2cppMemory:ClearSavedResults()
         return searchParams
@@ -300,18 +291,7 @@ local Il2cppBase = {
     FindObject = function(searchParams)
         Il2cppMemory:SaveResults()
         for i = 1, #searchParams do
-            local searchParam = searchParams[i]
-            local classesMemory = Il2cppMemory:GetInfoOfClass(searchParam)
-            if classesMemory then
-                searchParams[i] = Il2cpp.ObjectApi:Find(classesMemory.SearchResult)
-            else
-                local classConfig = {
-                    Class = searchParam
-                }
-                local searchResult = Il2cpp.ClassApi:Find(classConfig)
-                Il2cppMemory:SetInformaionOfClass(classConfig, searchResult)
-                searchParams[i] = Il2cpp.ObjectApi:Find(searchResult)
-            end
+            searchParams[i] = Il2cpp.ObjectApi:Find(Il2cpp.ClassApi:Find({Class = searchParams[i]}))
         end
         Il2cppMemory:ClearSavedResults()
         return searchParams
@@ -635,17 +615,17 @@ end)
 __bundle_register("utils.il2cppmemory", function(require, _LOADED, __bundle_register, __bundle_modules)
 -- Memorizing Il2cpp Search Result
 ---@class Il2cppMemory
----@field Methods table<number | string, MethodInfo[] | ErrorSearch>
----@field Classes table<ClassConfig, ClassInfo[] | ErrorSearch>
+---@field Methods table<number | string, MethodMemory>
+---@field Classes table<string | number, table<string, ClassInfo[] | ErrorSearch | number | ClassConfig>>
 ---@field Fields table<number | string, FieldInfo[] | ErrorSearch>
 ---@field Results table
 ---@field Types table<number, string>
 ---@field DefaultValues table<number, string | number>
----@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodInfo[] | nil | ErrorSearch
----@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodInfo[] | ErrorSearch) : void
+---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodMemory | nil
+---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodMemory) : void
 ---@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
----@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : ClassConfig) : ClassInfo[] | nil | ErrorSearch
----@field SetInformaionOfClass fun(self : Il2cppMemory, searchParam : ClassConfig, searchResult : ClassInfo[] | ErrorSearch) : void
+---@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : string | number) : table<string, ClassInfo[] | ErrorSearch | number | ClassConfig>
+---@field SetInformationOfClass fun(self : Il2cppMemory, searchParam : string | number, searchResult : table<string, ClassInfo[] | ErrorSearch | number | ClassConfig>) : void
 ---@field GetInformationOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
 ---@field SetInformationOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
 ---@field GetInformationOfType fun(self : Il2cppMemory, index : number) : string | nil
@@ -733,32 +713,13 @@ local Il2cppMemory = {
     end,
 
 
-    GetInfoOfClass = function(self, searchParam)
+    GetInformationOfClass = function(self, searchParam)
         return self.Classes[searchParam]
     end,
 
 
-    GetInformationOfClass = function(self, searchParam)
-        local ClassMemory = self:GetInfoOfClass(searchParam.Class)
-        if not (ClassMemory and
-            (ClassMemory.Config.FieldsDump == searchParam.FieldsDump and ClassMemory.Config.MethodsDump ==
-                searchParam.MethodsDump)) then
-            return nil
-        end
-        return ClassMemory.SearchResult
-    end,
-
-
-    SetInformaionOfClass = function(self, searchParam, searchResult)
-        if not searchResult.Error then
-            self.Classes[searchParam.Class] = {
-                Config = {
-                    FieldsDump = searchParam.FieldsDump and true,
-                    MethodsDump = searchParam.MethodsDump and true
-                },
-                SearchResult = searchResult
-            }
-        end
+    SetInformationOfClass = function(self, searchParam, searchResult)
+        self.Classes[searchParam] = searchResult
     end,
 
 
@@ -1023,6 +984,7 @@ end)
 __bundle_register("il2cppstruct.class", function(require, _LOADED, __bundle_register, __bundle_modules)
 local Protect = require("utils.protect")
 local StringUtils = require("utils.stringutils")
+local Il2cppMemory = require("utils.il2cppmemory")
 
 ---@class ClassApi
 ---@field NameOffset number
@@ -1274,13 +1236,28 @@ local ClassApi = {
         ---@type ClassInfoRaw[] | ErrorSearch
         local ClassInfo =
             (self.FindParamsCheck[type(class.Class)] or self.FindParamsCheck['default'])(self, class.Class)
-        if #ClassInfo ~= 0 then
+        local searchResult = Il2cppMemory:GetInformationOfClass(class.Class)
+        if not(searchResult) or 
+        searchResult['len'] < #ClassInfo or 
+        ((class.FieldsDump or class.MethodsDump) and 
+        (class.FieldsDump ~= searchResult.config.FieldsDump or class.MethodsDump ~= searchResult.config.MethodsDump)) 
+        then
             for k = 1, #ClassInfo do
                 ClassInfo[k] = self:UnpackClassInfo(ClassInfo[k], {
                     FieldsDump = class.FieldsDump,
                     MethodsDump = class.MethodsDump
                 })
             end
+            Il2cppMemory:SetInformationOfClass(class.Class, {
+                ['len'] = #ClassInfo, 
+                ['config'] = {
+                    Class = class.Class, 
+                    FieldsDump = class.FieldsDump, 
+                    MethodsDump = class.MethodsDump,
+                }, 
+                ['result'] = ClassInfo})
+        else
+            ClassInfo = searchResult.result
         end
         return ClassInfo
     end
@@ -1747,6 +1724,7 @@ end)
 __bundle_register("il2cppstruct.method", function(require, _LOADED, __bundle_register, __bundle_modules)
 local AndroidInfo = require("utils.androidinfo")
 local Protect = require("utils.protect")
+local Il2cppMemory = require("utils.il2cppmemory")
 
 ---@class MethodsApi
 ---@field ClassOffset number
@@ -1759,20 +1737,25 @@ local MethodsApi = {
 
     ---@param self MethodsApi
     ---@param MethodName string
+    ---@param searchResult MethodMemory
     ---@return MethodInfoRaw[]
-    FindMethodWithName = function(self, MethodName)
+    FindMethodWithName = function(self, MethodName, searchResult)
         local FinalMethods = {}
         local MethodNamePointers = Il2cpp.GlobalMetadataApi.GetPointersToString(MethodName)
-        for methodPointIndex, methodPoint in ipairs(MethodNamePointers) do
-            methodPoint.address = methodPoint.address - self.NameOffset
-            local MethodAddress = Il2cpp.FixValue(gg.getValues({methodPoint})[1].value)
-            if MethodAddress > Il2cpp.il2cppStart and MethodAddress < Il2cpp.il2cppEnd then
-                FinalMethods[#FinalMethods + 1] = {
-                    MethodName = MethodName,
-                    MethodAddress = MethodAddress,
-                    MethodInfoAddress = methodPoint.address
-                }
+        if searchResult.len < #MethodNamePointers then
+            for methodPointIndex, methodPoint in ipairs(MethodNamePointers) do
+                methodPoint.address = methodPoint.address - self.NameOffset
+                local MethodAddress = Il2cpp.FixValue(gg.getValues({methodPoint})[1].value)
+                if MethodAddress > Il2cpp.il2cppStart and MethodAddress < Il2cpp.il2cppEnd then
+                    FinalMethods[#FinalMethods + 1] = {
+                        MethodName = MethodName,
+                        MethodAddress = MethodAddress,
+                        MethodInfoAddress = methodPoint.address
+                    }
+                end
             end
+        else
+            searchResult.isNew = false
         end
         assert(#FinalMethods > 0, string.format("The '%s' method is not initialized", MethodName))
         return FinalMethods
@@ -1781,19 +1764,20 @@ local MethodsApi = {
 
     ---@param self MethodsApi
     ---@param MethodOffset number
+    ---@param searchResult MethodMemory | nil
     ---@return MethodInfoRaw[]
-    FindMethodWithOffset = function(self, MethodOffset)
-        local MethodsInfo = self.FindMethodWithAddressInMemory(Il2cpp.il2cppStart + MethodOffset, MethodOffset)
-        assert(#MethodsInfo > 0, string.format("nothing was found for this offset 0x%X", MethodOffset))
+    FindMethodWithOffset = function(self, MethodOffset, searchResult)
+        local MethodsInfo = self:FindMethodWithAddressInMemory(Il2cpp.il2cppStart + MethodOffset, searchResult, MethodOffset)
         return MethodsInfo
     end,
 
 
     ---@param self MethodsApi
     ---@param MethodAddress number
+    ---@param searchResult MethodMemory
     ---@param MethodOffset number | nil
     ---@return MethodInfoRaw[]
-    FindMethodWithAddressInMemory = function(self, MethodAddress, MethodOffset)
+    FindMethodWithAddressInMemory = function(self, MethodAddress, searchResult, MethodOffset)
         local RawMethodsInfo = {} -- the same as MethodsInfo
         gg.clearResults()
         gg.setRanges(gg.REGION_C_HEAP | gg.REGION_C_ALLOC | gg.REGION_ANONYMOUS | gg.REGION_C_BSS | gg.REGION_C_DATA |
@@ -1807,16 +1791,21 @@ local MethodsApi = {
             }})
             gg.searchPointer(0)
         end
-        local r = gg.getResults(gg.getResultsCount())
+        local r_count = gg.getResultsCount()
+        if r_count > searchResult.len then
+            local r = gg.getResults(r_count)
+            for j = 1, #r do
+                RawMethodsInfo[#RawMethodsInfo + 1] = {
+                    MethodAddress = MethodAddress,
+                    MethodInfoAddress = r[j].address,
+                    Offset = MethodOffset
+                }
+            end
+        else
+            searchResult.isNew = false
+        end 
         gg.clearResults()
-        for j = 1, #r do
-            RawMethodsInfo[#RawMethodsInfo + 1] = {
-                MethodAddress = MethodAddress,
-                MethodInfoAddress = r[j].address,
-                Offset = MethodOffset
-            }
-        end
-        assert(#RawMethodsInfo > 0 or MethodOffset, string.format("nothing was found for this address 0x%X", MethodAddress))
+        assert(#RawMethodsInfo > 0, string.format("nothing was found for this address 0x%X", MethodAddress))
         return RawMethodsInfo
     end,
 
@@ -1896,17 +1885,19 @@ local MethodsApi = {
     FindParamsCheck = {
         ---@param self MethodsApi
         ---@param method number
-        ['number'] = function(self, method)
+        ---@param searchResult MethodMemory
+        ['number'] = function(self, method, searchResult)
             if (method > Il2cpp.il2cppStart and method < Il2cpp.il2cppEnd) then
-                return Protect:Call(self.FindMethodWithAddressInMemory, self, method)
+                return Protect:Call(self.FindMethodWithAddressInMemory, self, method, searchResult)
             else
-                return Protect:Call(self.FindMethodWithOffset, self, method)
+                return Protect:Call(self.FindMethodWithOffset, self, method, searchResult)
             end
         end,
         ---@param self MethodsApi
         ---@param method string
-        ['string'] = function(self, method)
-            return Protect:Call(self.FindMethodWithName, self, method)
+        ---@param searchResult MethodMemory
+        ['string'] = function(self, method, searchResult)
+            return Protect:Call(self.FindMethodWithName, self, method, searchResult)
         end,
         ['default'] = function()
             return {
@@ -1920,9 +1911,15 @@ local MethodsApi = {
     ---@param method number | string
     ---@return MethodInfo[] | ErrorSearch
     Find = function(self, method)
+        local searchResult = Il2cppMemory:GetInformaionOfMethod(method)
+        if not searchResult then
+            searchResult = {len = 0}
+        end
+        searchResult.isNew = true
+
         ---@type MethodInfoRaw[] | ErrorSearch
-        local _MethodsInfo = (self.FindParamsCheck[type(method)] or self.FindParamsCheck['default'])(self, method)
-        if (#_MethodsInfo > 0) then
+        local _MethodsInfo = (self.FindParamsCheck[type(method)] or self.FindParamsCheck['default'])(self, method, searchResult)
+        if searchResult.isNew then
             local MethodsInfo = {}
             for i = 1, #_MethodsInfo do
                 local MethodInfo
@@ -1931,6 +1928,13 @@ local MethodsApi = {
             end
             MethodsInfo = gg.getValues(MethodsInfo)
             self:DecodeMethodsInfo(_MethodsInfo, MethodsInfo)
+
+            -- save result
+            searchResult.len = #_MethodsInfo
+            searchResult.result = _MethodsInfo
+            Il2cppMemory:SetInformaionOfMethod(method, searchResult)
+        else
+            _MethodsInfo = searchResult.result
         end
 
         return _MethodsInfo
