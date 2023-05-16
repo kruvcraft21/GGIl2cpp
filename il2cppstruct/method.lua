@@ -37,7 +37,7 @@ local MethodsApi = {
     ---@param MethodOffset number
     ---@return MethodInfoRaw[]
     FindMethodWithOffset = function(self, MethodOffset)
-        local MethodsInfo = self.FindMethodWithAddressInMemory(Il2cpp.il2cppStart + MethodOffset, MethodOffset)
+        local MethodsInfo = self:FindMethodWithAddressInMemory(Il2cpp.il2cppStart + MethodOffset, MethodOffset)
         assert(#MethodsInfo > 0, string.format("nothing was found for this offset 0x%X", MethodOffset))
         return MethodsInfo
     end,
