@@ -32,9 +32,11 @@ require("il2cpp")
 ---@field ClassName string | nil
 
 
----@class ClassesMemory
----@field Config ClassConfig
----@field SearchResult ClassInfo[]
+---@class ClassMemory
+---@field config ClassConfig
+---@field result ClassInfo[] | ErrorSearch
+---@field len number
+---@field isNew boolean | nil
 
 ---@class MethodMemory
 ---@field len number
