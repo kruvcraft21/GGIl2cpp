@@ -266,12 +266,12 @@ local ClassApi = {
     ---@return ClassInfo[] | ErrorSearch
     Find = function(self, class)
         local searchResult = Il2cppMemory:GetInformationOfClass(class.Class)
-        if (not searchResult) 
-            or ((class.FieldsDump or class.MethodsDump)
-                and (searchResult.config.FieldsDump ~= class.FieldsDump or searchResult.config.MethodsDump ~= class.MethodsDump))  
-            then
-            searchResult = {len = 0}
+        if not searchResult 
+        or (class.FieldsDump and searchResult.config.FieldsDump ~= class.FieldsDump) 
+        or (class.MethodsDump and searchResult.config.MethodsDump ~= class.MethodsDump) then
+            searchResult =  {len = 0}
         end
+
         searchResult.isNew = true
 
         ---@type ClassInfoRaw[] | ErrorSearch
