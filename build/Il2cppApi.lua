@@ -75,9 +75,11 @@ require("il2cpp")
 ---@field ClassName string | nil
 
 
----@class ClassesMemory
----@field Config ClassConfig
----@field SearchResult ClassInfo[]
+---@class ClassMemory
+---@field config ClassConfig
+---@field result ClassInfo[] | ErrorSearch
+---@field len number
+---@field isNew boolean | nil
 
 ---@class MethodMemory
 ---@field len number
@@ -616,16 +618,15 @@ __bundle_register("utils.il2cppmemory", function(require, _LOADED, __bundle_regi
 -- Memorizing Il2cpp Search Result
 ---@class Il2cppMemory
 ---@field Methods table<number | string, MethodMemory>
----@field Classes table<string | number, table<string, ClassInfo[] | ErrorSearch | number | ClassConfig>>
+---@field Classes table<string | number, ClassMemory>
 ---@field Fields table<number | string, FieldInfo[] | ErrorSearch>
 ---@field Results table
 ---@field Types table<number, string>
 ---@field DefaultValues table<number, string | number>
 ---@field GetInformaionOfMethod fun(self : Il2cppMemory, searchParam : number | string) : MethodMemory | nil
 ---@field SetInformaionOfMethod fun(self : Il2cppMemory, searchParam : string | number, searchResult : MethodMemory) : void
----@field GetInfoOfClass fun(self : Il2cppMemory, searchParam : number | string) : ClassesMemory | nil
----@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : string | number) : table<string, ClassInfo[] | ErrorSearch | number | ClassConfig>
----@field SetInformationOfClass fun(self : Il2cppMemory, searchParam : string | number, searchResult : table<string, ClassInfo[] | ErrorSearch | number | ClassConfig>) : void
+---@field GetInformationOfClass fun(self : Il2cppMemory, searchParam : string | number) : ClassMemory | nil
+---@field SetInformationOfClass fun(self : Il2cppMemory, searchParam : string | number, searchResult : ClassMemory) : void
 ---@field GetInformationOfField fun(self : Il2cppMemory, searchParam : number | string) : FieldInfo[] | nil | ErrorSearch
 ---@field SetInformationOfField fun(self : Il2cppMemory, searchParam : string | number, searchResult : FieldInfo[] | ErrorSearch) : void
 ---@field GetInformationOfType fun(self : Il2cppMemory, index : number) : string | nil
@@ -1175,19 +1176,26 @@ local ClassApi = {
 
 
     ---@param self ClassApi
-    FindClassWithName = function(self, ClassName)
+    ---@param ClassName string
+    ---@param searchResult ClassMemory
+    FindClassWithName = function(self, ClassName, searchResult)
         local ClassNamePoint = Il2cpp.GlobalMetadataApi.GetPointersToString(ClassName)
         local ResultTable = {}
-        for classPointIndex, classPoint in ipairs(ClassNamePoint) do
-            local classAddress = classPoint.address - self.NameOffset
-            local imageName = self.IsClassInfo(classAddress)
-            if (imageName) then
-                ResultTable[#ResultTable + 1] = {
-                    ClassInfoAddress = Il2cpp.FixValue(classAddress),
-                    ClassName = ClassName,
-                    ImageName = imageName
-                }
+        if #ClassNamePoint > searchResult.len then
+            for classPointIndex, classPoint in ipairs(ClassNamePoint) do
+                local classAddress = classPoint.address - self.NameOffset
+                local imageName = self.IsClassInfo(classAddress)
+                if (imageName) then
+                    ResultTable[#ResultTable + 1] = {
+                        ClassInfoAddress = Il2cpp.FixValue(classAddress),
+                        ClassName = ClassName,
+                        ImageName = imageName
+                    }
+                end
             end
+            searchResult.len = #ClassNamePoint
+        else
+            searchResult.isNew = false
         end
         assert(#ResultTable > 0, string.format("The '%s' class is not initialized", ClassName))
         return ResultTable
@@ -1195,15 +1203,22 @@ local ClassApi = {
 
 
     ---@param self ClassApi
+    ---@param ClassAddress number
+    ---@param searchResult ClassMemory
     ---@return ClassInfoRaw[]
-    FindClassWithAddressInMemory = function(self, ClassAddress)
+    FindClassWithAddressInMemory = function(self, ClassAddress, searchResult)
         local ResultTable = {}
-        local imageName = self.IsClassInfo(ClassAddress)
-        if imageName then
-            ResultTable[#ResultTable + 1] = {
-                ClassInfoAddress = ClassAddress,
-                ImageName = imageName
-            }
+        if searchResult.len < 1 then
+            local imageName = self.IsClassInfo(ClassAddress)
+            if imageName then
+                ResultTable[#ResultTable + 1] = {
+                    ClassInfoAddress = ClassAddress,
+                    ImageName = imageName
+                }
+            end
+            searchResult.len = 1
+        else
+            searchResult.isNew = false
         end
         assert(#ResultTable > 0, string.format("nothing was found for this address 0x%X", ClassAddress))
         return ResultTable
@@ -1213,13 +1228,15 @@ local ClassApi = {
     FindParamsCheck = {
         ---@param self ClassApi
         ---@param _class number @Class Address In Memory
-        ['number'] = function(self, _class)
-            return Protect:Call(self.FindClassWithAddressInMemory, self, _class)
+        ---@param searchResult ClassMemory
+        ['number'] = function(self, _class, searchResult)
+            return Protect:Call(self.FindClassWithAddressInMemory, self, _class, searchResult)
         end,
         ---@param self ClassApi
         ---@param _class string @Class Name
-        ['string'] = function(self, _class)
-            return Protect:Call(self.FindClassWithName, self, _class)
+        ---@param searchResult ClassMemory
+        ['string'] = function(self, _class, searchResult)
+            return Protect:Call(self.FindClassWithName, self, _class, searchResult)
         end,
         ['default'] = function()
             return {
@@ -1233,29 +1250,32 @@ local ClassApi = {
     ---@param class ClassConfig
     ---@return ClassInfo[] | ErrorSearch
     Find = function(self, class)
+        local searchResult = Il2cppMemory:GetInformationOfClass(class.Class)
+        if (not searchResult) 
+            or ((class.FieldsDump or class.MethodsDump)
+                and (searchResult.config.FieldsDump ~= class.FieldsDump or searchResult.config.MethodsDump ~= class.MethodsDump))  
+            then
+            searchResult = {len = 0}
+        end
+        searchResult.isNew = true
+
         ---@type ClassInfoRaw[] | ErrorSearch
         local ClassInfo =
-            (self.FindParamsCheck[type(class.Class)] or self.FindParamsCheck['default'])(self, class.Class)
-        local searchResult = Il2cppMemory:GetInformationOfClass(class.Class)
-        if not(searchResult) or 
-        searchResult['len'] < #ClassInfo or 
-        ((class.FieldsDump or class.MethodsDump) and 
-        (class.FieldsDump ~= searchResult.config.FieldsDump or class.MethodsDump ~= searchResult.config.MethodsDump)) 
-        then
+            (self.FindParamsCheck[type(class.Class)] or self.FindParamsCheck['default'])(self, class.Class, searchResult)
+        if searchResult.isNew then
             for k = 1, #ClassInfo do
                 ClassInfo[k] = self:UnpackClassInfo(ClassInfo[k], {
                     FieldsDump = class.FieldsDump,
                     MethodsDump = class.MethodsDump
                 })
             end
-            Il2cppMemory:SetInformationOfClass(class.Class, {
-                ['len'] = #ClassInfo, 
-                ['config'] = {
-                    Class = class.Class, 
-                    FieldsDump = class.FieldsDump, 
-                    MethodsDump = class.MethodsDump,
-                }, 
-                ['result'] = ClassInfo})
+            searchResult.config = {
+                Class = class.Class,
+                FieldsDump = class.FieldsDump,
+                MethodsDump = class.MethodsDump
+            }
+            searchResult.result = ClassInfo
+            Il2cppMemory:SetInformationOfClass(class.Class, searchResult)
         else
             ClassInfo = searchResult.result
         end
