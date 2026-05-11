@@ -1,5 +1,5 @@
 # Il2cpp Module for GameGuardian
-[![GameGuardian](https://img.shields.io/badge/GameGuardian-7c36b1)](https://gameguardian.net/forum/files/file/3056-ggil2cpp)[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?&logo=telegram&logoColor=white)](https://t.me/CDdreem)
+[![GameGuardian](https://img.shields.io/badge/GameGuardian-7c36b1)](https://gameguardian.net/forum/files/file/3056-ggil2cpp)
 ## About Module
 
 This script is only needed to make it easier to work with Il2cpp. This script works through the program [GameGuardian](https://gameguardian.net). With the help of the module, you can get information about the method or class that interests you. This script is not positioned as a dumper, and is only needed to simplify working with Il2cpp.
